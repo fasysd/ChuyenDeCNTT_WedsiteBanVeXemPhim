@@ -1,0 +1,81 @@
+/* body{
+    background:#000;
+    color:white;
+} */
+.movie-index-page{
+    background: linear-gradient(
+    150deg,
+    #343434 0%,
+    #000000 100%
+);
+}
+
+#homeBanner{
+    border-radius:16px;
+    overflow:hidden;
+}
+
+.movie-section{
+    margin-top:30px;
+}
+
+.movie-section-title{
+    font-size:1.8rem;
+    font-weight:600;
+    color: #00c16a ;
+    margin-bottom:20px;
+}
+
+/* Row phim */
+
+.movie-row{
+    display:flex;
+    gap:20px;
+    padding:15px 0 25px 0;
+}
+/* Item */
+
+.movie-item{
+    flex:0 0 250px;
+}
+
+/* Card */
+
+.movie-card{
+    cursor:pointer;
+
+    border:none !important;
+    border-radius:12px !important;
+
+    overflow:hidden;
+
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease;
+
+    background:#1b1b1b !important;
+}
+
+.movie-card:hover{
+    transform:translateY(-12px) scale(1.02);
+
+    box-shadow:
+        0 20px 40px rgba(0,0,0,.55) !important;
+}
+
+.movie-card .card-img-top{
+    transition:transform .3s ease;
+}
+
+.movie-card:hover .card-img-top{
+    transform:scale(1.05);
+}
+
+.movie-card .card-title{
+    font-size:1rem;
+    margin-bottom:.5rem;
+}
+
+.movie-card .badge{
+    font-size:.75rem;
+}

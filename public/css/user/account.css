@@ -1,0 +1,104 @@
+.account-page{
+    min-height:100vh;
+    background:#000;
+    padding-top:40px;
+}
+
+.account-title{
+    color:#ff3b3b;
+    font-size:32px;
+    margin-bottom:20px;
+}
+
+.account-menu{
+    background:#1f1f1f;
+    color:#fff;
+    border:none;
+    padding:18px 24px;
+}
+
+.account-menu:hover{
+    background:#2b2b2b;
+    color:#fff;
+}
+
+.account-menu.active{
+    background:#17b95d;
+    color:#fff;
+}
+
+.account-content{
+    color:#fff;
+}
+
+.account-header{
+    background:#17b95d;
+    text-align:center;
+    padding:12px;
+    font-size:24px;
+    margin-bottom:30px;
+}
+
+.form-label{
+    color:#fff;
+}
+
+.form-control{
+    border-radius:10px;
+}
+
+.btn-save{
+    background:#17b95d;
+    color:#fff;
+    border:none;
+    padding:10px 32px;
+    border-radius:999px;
+}
+
+.btn-save:hover{
+    background:#13994d;
+    color:#fff;
+}
+.ticket-table-wrapper{
+    margin-top:30px;
+}
+
+.ticket-table{
+    width:100%;
+    border-collapse:collapse;
+    color:#fff;
+}
+
+/* Header có border bao ngoài */
+
+.ticket-table thead th{
+    background:#1e1e1e;
+
+    padding:14px 18px;
+
+    border:1px solid #444;
+
+    font-weight:600;
+    text-align:left;
+}
+
+/* Body chỉ có border-bottom */
+
+.ticket-table tbody td{
+    padding:18px;
+
+    border-bottom:1px solid #333;
+}
+
+.ticket-table tbody tr:hover{
+    background:#171717;
+}
+
+.ticket-status{
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:14px;
+}
+.ticket-row{
+    cursor:pointer;
+}
