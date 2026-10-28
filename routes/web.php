@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminMovieController;
+use App\Http\Controllers\AdminRefundController;
+use App\Http\Controllers\AdminRevenueController;
 use App\Http\Controllers\AdminRoomController;
 use App\Http\Controllers\AdminShowtimeController;
 use App\Http\Controllers\AdminStaffController;
@@ -59,9 +61,16 @@ Route::middleware('auth')->group(function () {
         return view('movie.purchase_result');
     })->name('ticket.result');
 
-    // Quản lý vé cá nhân
+    // Quản lý vé cá nhân & Đơn đặt vé (Booking & Tickets)
     Route::get('/account/tickets', [TicketController::class, 'index'])->name('user.account.tickets');
     Route::get('/account/tickets/{id}', [TicketController::class, 'show'])->name('user.account.tickets.show');
+
+    // Thao tác với Đơn đặt vé (Booking)
+    Route::post('/account/bookings/{id}/pay', [TicketController::class, 'payBooking'])->name('user.account.bookings.pay');
+    Route::post('/account/bookings/{id}/cancel', [TicketController::class, 'cancelBooking'])->name('user.account.bookings.cancel');
+    Route::post('/account/bookings/{id}/refund', [TicketController::class, 'requestRefund'])->name('user.account.bookings.refund');
+
+    // Thao tác với vé lẻ (Dự phòng tương thích)
     Route::post('/account/tickets/{id}/cancel', [TicketController::class, 'cancel'])->name('user.account.tickets.cancel');
     Route::post('/account/tickets/{id}/pay', [TicketController::class, 'payment'])->name('user.account.tickets.payment');
 });
@@ -109,4 +118,12 @@ Route::middleware(['auth', 'admin'])
         Route::get('/staff/{staff}/edit', [AdminStaffController::class, 'edit'])->name('staff.edit');
         Route::put('/staff/{staff}', [AdminStaffController::class, 'update'])->name('staff.update');
         Route::put('/staff/{staff}/reset-password', [AdminStaffController::class, 'resetPassword'])->name('staff.reset-password');
+
+        // Quản lý Hoàn tiền (Refunds)
+        Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
+        Route::post('/refunds/{refund}/approve', [AdminRefundController::class, 'approve'])->name('refunds.approve');
+        Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');
+
+        // Quản lý Doanh thu (Revenue)
+        Route::get('/revenue', [AdminRevenueController::class, 'index'])->name('revenue.index');
     });

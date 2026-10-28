@@ -58,6 +58,12 @@
                     <a class="nav-link {{ request()->routeIs('admin.staff.*') ? 'active' : '' }}" href="{{ route('admin.staff.index') }}">
                         👥 Quản lý nhân viên
                     </a>
+                    <a class="nav-link {{ request()->routeIs('admin.refunds.*') ? 'active' : '' }}" href="{{ route('admin.refunds.index') }}">
+                        💸 Quản lý hoàn tiền
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}" href="{{ route('admin.revenue.index') }}">
+                        📈 Quản lý doanh thu
+                    </a>
 
                     <hr class="border-secondary my-3">
 

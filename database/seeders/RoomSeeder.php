@@ -9,21 +9,19 @@ class RoomSeeder extends Seeder
 {
     public function run(): void
     {
-        // Room::truncate();
+        Room::create([
+            'name' => 'Phòng Chiếu 01 (2D Digital)',
+            'total_seats' => 50,
+        ]);
 
-        Room::insert([
-            [
-                'name' => 'Room 1',
-                'total_seats' => 50,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Room 2',
-                'total_seats' => 50,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
+        Room::create([
+            'name' => 'Phòng Chiếu 02 (VIP Cinema)',
+            'total_seats' => 50,
+        ]);
+
+        Room::create([
+            'name' => 'Phòng Chiếu 03 (IMAX Laser)',
+            'total_seats' => 50,
         ]);
     }
 }

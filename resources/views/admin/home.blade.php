@@ -15,24 +15,40 @@
     </div>
 </div>
 
-<div class="row g-4 mb-5">
-    <div class="col-md-4">
+<div class="row g-3 mb-4">
+    <div class="col-md">
         <div class="card p-3 border-secondary">
-            <span class="text-secondary small">Tổng số phim trong rạp</span>
-            <h2 class="text-info fw-bold mb-0 mt-1">{{ $movies->count() }}</h2>
+            <span class="text-secondary small">Tổng số phim</span>
+            <h3 class="text-info fw-bold mb-0 mt-1">{{ $movies->count() }}</h3>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md">
         <div class="card p-3 border-secondary">
             <span class="text-secondary small">Phim đang chiếu</span>
-            <h2 class="text-success fw-bold mb-0 mt-1">{{ $currentShowings->count() }}</h2>
+            <h3 class="text-success fw-bold mb-0 mt-1">{{ $currentShowings->count() }}</h3>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md">
         <div class="card p-3 border-secondary">
-            <span class="text-secondary small">Phim sắp khởi chiếu</span>
-            <h2 class="text-warning fw-bold mb-0 mt-1">{{ $upcomingMovies->count() }}</h2>
+            <span class="text-secondary small">Phim sắp chiếu</span>
+            <h3 class="text-warning fw-bold mb-0 mt-1">{{ $upcomingMovies->count() }}</h3>
         </div>
+    </div>
+    <div class="col-md">
+        <a href="{{ route('admin.revenue.index') }}" class="text-decoration-none">
+            <div class="card p-3 border-success h-100 hover-card">
+                <span class="text-success small fw-bold">📈 Quản lý doanh thu</span>
+                <div class="text-white small mt-1">Báo cáo & Biểu đồ →</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md">
+        <a href="{{ route('admin.refunds.index') }}" class="text-decoration-none">
+            <div class="card p-3 border-warning h-100 hover-card">
+                <span class="text-warning small fw-bold">💸 Quản lý hoàn tiền</span>
+                <div class="text-white small mt-1">Duyệt yêu cầu →</div>
+            </div>
+        </a>
     </div>
 </div>
 

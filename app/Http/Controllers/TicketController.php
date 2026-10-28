@@ -4,20 +4,37 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Movie;
+use App\Models\Payment;
+use App\Models\Refund;
 use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\TicketDetail;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class TicketController extends Controller
 {
     /**
-     * Danh sách vé của người dùng đang đăng nhập
+     * Danh sách đơn đặt vé và vé của người dùng đang đăng nhập
      */
     public function index()
     {
+        // Lấy danh sách Booking kèm đầy đủ thông tin vé, ghế, phim, phòng, thanh toán và hoàn tiền
+        $bookings = Booking::with([
+            'ticketDetails.seat',
+            'ticketDetails.showtime.movie',
+            'ticketDetails.showtime.room',
+            'payments',
+            'refunds'
+        ])
+            ->where('user_id', Auth::id())
+            ->latest('id')
+            ->get();
+
+        // Đồng thời lấy danh sách vé lẻ để phục vụ giao diện danh sách vé
         $tickets = TicketDetail::with(['booking', 'seat', 'showtime.movie', 'showtime.room'])
             ->whereHas('booking', function ($q) {
                 $q->where('user_id', Auth::id());
@@ -25,21 +42,54 @@ class TicketController extends Controller
             ->latest('id')
             ->get();
 
-        return view('user.account.tickets', compact('tickets'));
+        return view('user.account.tickets', compact('bookings', 'tickets'));
     }
 
     /**
-     * Xem chi tiết một vé cụ thể
+     * Xem chi tiết đơn đặt vé và tất cả các vé thuộc đơn đó
      */
     public function show(string $id)
     {
-        $ticket = TicketDetail::with(['booking.user', 'seat', 'showtime.movie', 'showtime.room'])
-            ->whereHas('booking', function ($query) {
-                $query->where('user_id', Auth::id());
-            })
-            ->findOrFail($id);
+        // 1. Tìm theo Booking ID trước
+        $booking = Booking::with([
+            'user',
+            'ticketDetails.seat',
+            'ticketDetails.showtime.movie',
+            'ticketDetails.showtime.room',
+            'payments',
+            'refunds'
+        ])
+            ->where('user_id', Auth::id())
+            ->find($id);
 
-        return view('user.account.tickets.show', compact('ticket'));
+        // 2. Nếu không phải Booking ID, kiểm tra xem có phải TicketDetail ID không
+        if (!$booking) {
+            $ticketDetail = TicketDetail::whereHas('booking', function ($q) {
+                $q->where('user_id', Auth::id());
+            })->find($id);
+
+            if ($ticketDetail) {
+                $booking = Booking::with([
+                    'user',
+                    'ticketDetails.seat',
+                    'ticketDetails.showtime.movie',
+                    'ticketDetails.showtime.room',
+                    'payments',
+                    'refunds'
+                ])
+                    ->where('user_id', Auth::id())
+                    ->find($ticketDetail->booking_id);
+            }
+        }
+
+        if (!$booking) {
+            abort(404, 'Đơn đặt vé không tồn tại hoặc bạn không có quyền truy cập.');
+        }
+
+        $tickets = $booking->ticketDetails;
+        $ticket = $tickets->first();
+
+        return view('user.account.tickets.show', compact('booking', 'tickets', 'ticket'));
     }
 
     /**
@@ -162,15 +212,17 @@ class TicketController extends Controller
                 $totalPrice += $price;
             }
 
-            // Tạo đơn Booking
+            // Tạo đơn Booking với thời gian giữ chỗ 10 phút
+            $holdingExpiresAt = now()->addMinutes(10);
             $booking = Booking::create([
                 'user_id' => Auth::id(),
                 'total_price' => $totalPrice,
                 'status' => 'PENDING',
-                'expired_at' => now()->addMinutes(10),
+                'holding_expires_at' => $holdingExpiresAt,
+                'expired_at' => $holdingExpiresAt,
             ]);
 
-            // Tạo từng chi tiết vé TicketDetail
+            // Tạo từng chi tiết vé TicketDetail ở trạng thái HOLDING
             foreach ($seats as $seat) {
                 TicketDetail::create([
                     'booking_id' => $booking->id,
@@ -184,11 +236,165 @@ class TicketController extends Controller
 
         return redirect()
             ->route('user.account.tickets')
-            ->with('success', 'Đặt vé thành công! Vui lòng kiểm tra và thanh toán vé của bạn trong thời gian giữ chỗ.');
+            ->with('success', 'Đặt vé thành công! Bạn có 10 phút để thực hiện thanh toán cho đơn vé này.');
     }
 
     /**
-     * Hủy vé giữ chỗ hoặc vé đã đặt
+     * Thanh toán cho toàn bộ Đơn đặt vé (Booking Payment)
+     */
+    public function payBooking(Request $request, string $id)
+    {
+        $booking = Booking::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if ($booking->status === 'PAID') {
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('error', 'Đơn đặt vé này đã được thanh toán trước đó.');
+        }
+
+        // Kiểm tra xem đơn hàng còn hạn thanh toán không
+        if (!$booking->canPay()) {
+            DB::transaction(function () use ($booking) {
+                $booking->update(['status' => 'CANCELLED']);
+                $booking->ticketDetails()->where('status', 'HOLDING')->update(['status' => 'CANCELLED']);
+            });
+
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('error', 'Thời gian giữ chỗ của đơn hàng đã hết hạn. Các ghế đã được tự động giải phóng.');
+        }
+
+        $method = $request->input('payment_method', 'BANK_TRANSFER');
+        if (!in_array($method, ['BANK_TRANSFER', 'E_WALLET', 'CARD'])) {
+            $method = 'BANK_TRANSFER';
+        }
+
+        $provider = match ($method) {
+            'E_WALLET' => 'MOMO',
+            'CARD' => 'VISA/MASTERCARD',
+            default => 'VNPAY',
+        };
+
+        DB::transaction(function () use ($booking, $method, $provider) {
+            // 1. Tạo bản ghi thanh toán mới trong bảng payments
+            Payment::create([
+                'booking_id' => $booking->id,
+                'method' => $method,
+                'status' => 'PAID',
+                'amount' => $booking->total_price,
+                'payment_code' => 'PAY-' . strtoupper(Str::random(10)),
+                'transaction_code' => 'TXN-' . strtoupper(Str::random(12)),
+                'provider' => $provider,
+                'paid_at' => now(),
+            ]);
+
+            // 2. Chuyển trạng thái đơn hàng sang PAID
+            $booking->update(['status' => 'PAID']);
+
+            // 3. Chuyển tất cả các vé của đơn từ HOLDING sang BOOKED
+            $booking->ticketDetails()
+                ->where('status', 'HOLDING')
+                ->update(['status' => 'BOOKED']);
+        });
+
+        return redirect()
+            ->route('user.account.tickets')
+            ->with('success', "Thanh toán thành công đơn đặt vé #{$booking->id} qua {$provider}! Chúc bạn xem phim vui vẻ.");
+    }
+
+    /**
+     * Hủy đơn đặt vé khi còn ở trạng thái PENDING (Cancel Booking)
+     */
+    public function cancelBooking(Request $request, string $id)
+    {
+        $booking = Booking::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if ($booking->status === 'PENDING') {
+            DB::transaction(function () use ($booking) {
+                $booking->update(['status' => 'CANCELLED']);
+                $booking->ticketDetails()->update(['status' => 'CANCELLED']);
+
+                // Đổi trạng thái các phiên thanh toán đang chờ nếu có
+                $booking->payments()->where('status', 'PENDING')->update(['status' => 'CANCELLED']);
+            });
+
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('success', 'Đã hủy đơn đặt vé thành công. Toàn bộ ghế đã được giải phóng.');
+        }
+
+        return redirect()
+            ->route('user.account.tickets')
+            ->with('error', 'Đơn đặt vé này không thể hủy ở trạng thái hiện tại.');
+    }
+
+    /**
+     * Khách hàng gửi Yêu cầu Hoàn tiền (Customer Refund Request)
+     */
+    public function requestRefund(Request $request, string $id)
+    {
+        $booking = Booking::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if ($booking->status !== 'PAID') {
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('error', 'Chỉ những đơn vé đã thanh toán mới có thể gửi yêu cầu hoàn tiền.');
+        }
+
+        // Kiểm tra xem đã có yêu cầu hoàn tiền đang chờ hoặc đã duyệt chưa
+        $existingRefund = $booking->refunds()
+            ->whereIn('refunds.status', ['PENDING', 'COMPLETED'])
+            ->exists();
+
+        if ($existingRefund) {
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('error', 'Đơn đặt vé này đã có yêu cầu hoàn tiền đang được Ban quản trị xử lý.');
+        }
+
+        // Kiểm tra điều kiện thời gian: phải trước giờ chiếu ít nhất 2 tiếng (120 phút)
+        $showtime = $booking->earliestShowtime();
+        if (!$showtime || !Carbon::parse($showtime->start_time)->isFuture() || now()->diffInMinutes(Carbon::parse($showtime->start_time), false) < 120) {
+            return redirect()
+                ->route('user.account.tickets')
+                ->with('error', 'Không thể hoàn tiền do vi phạm điều kiện thời gian (chỉ chấp nhận hoàn tiền trước giờ chiếu ít nhất 2 tiếng).');
+        }
+
+        // Tìm payment thành công
+        $payment = $booking->successfulPayment ?? $booking->payments()->latest()->first();
+        if (!$payment) {
+            // Trường hợp dữ liệu cũ chưa có payment, tạo payment tự động
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'method' => 'BANK_TRANSFER',
+                'status' => 'PAID',
+                'amount' => $booking->total_price,
+                'payment_code' => 'PAY-' . strtoupper(Str::random(10)),
+                'paid_at' => now(),
+            ]);
+        }
+
+        // Tạo bản ghi hoàn tiền mới ở trạng thái PENDING
+        Refund::create([
+            'payment_id' => $payment->id,
+            'amount' => $booking->total_price,
+            'status' => 'PENDING',
+            'refund_code' => 'REF-' . strtoupper(Str::random(10)),
+        ]);
+
+        return redirect()
+            ->route('user.account.tickets')
+            ->with('success', 'Yêu cầu hoàn tiền đã được gửi thành công! Ban quản trị sẽ sớm xem xét và phản hồi.');
+    }
+
+    /**
+     * Hủy vé lẻ (Dự phòng tương thích với các view hoặc test cũ)
      */
     public function cancel(string $id)
     {
@@ -204,7 +410,6 @@ class TicketController extends Controller
 
                 $booking = $ticket->booking;
                 if ($booking) {
-                    // Nếu tất cả các vé của đơn này đều đã hủy thì đơn chuyển sang CANCELLED
                     $activeTicketsCount = $booking->ticketDetails()
                         ->whereIn('status', ['HOLDING', 'BOOKED', 'USED'])
                         ->count();
@@ -226,7 +431,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Thanh toán vé (mô phỏng thanh toán)
+     * Thanh toán vé lẻ (Dự phòng tương thích với các view hoặc test cũ)
      */
     public function payment(string $id)
     {
@@ -242,10 +447,20 @@ class TicketController extends Controller
 
                 $booking = $ticket->booking;
                 if ($booking) {
-                    // Nếu không còn vé nào ở trạng thái HOLDING, chuyển đơn sang PAID
                     $hasHolding = $booking->ticketDetails()->where('status', 'HOLDING')->exists();
                     if (!$hasHolding) {
                         $booking->update(['status' => 'PAID']);
+                        // Tạo payment tương ứng nếu chưa có
+                        if (!$booking->successfulPayment) {
+                            Payment::create([
+                                'booking_id' => $booking->id,
+                                'method' => 'BANK_TRANSFER',
+                                'status' => 'PAID',
+                                'amount' => $booking->total_price,
+                                'payment_code' => 'PAY-' . strtoupper(Str::random(10)),
+                                'paid_at' => now(),
+                            ]);
+                        }
                     }
                 }
             });
