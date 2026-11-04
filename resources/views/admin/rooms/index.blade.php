@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ route('admin.rooms.create') }}" class="btn btn-success">
-            ➕ Thêm phòng mới
+            + Thêm phòng mới
         </a>
     </div>
 </div>

@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ route('admin.movies.create') }}" class="btn btn-success">
-            ➕ Thêm phim mới
+            + Thêm phim mới
         </a>
     </div>
 </div>

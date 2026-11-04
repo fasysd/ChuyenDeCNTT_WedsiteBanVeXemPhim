@@ -1,5 +1,5 @@
 <section class="movie-section mb-5">
-    <h2 class="movie-section-title text-light fw-bold border-bottom border-danger pb-2 mb-4">
+    <h2 class="movie-section-title fw-bold border-bottom border-danger pb-2 mb-4">
         {{ $title }}
     </h2>
 

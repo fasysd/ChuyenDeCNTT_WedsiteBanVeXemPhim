@@ -86,13 +86,13 @@
                                         {{ $movie->title ?? 'N/A' }}
                                     </h3>
                                     <div class="text-light mb-1">
-                                        ⏰ Suất chiếu: <strong>{{ $showtime ? \Carbon\Carbon::parse($showtime->start_time)->format('H:i - d/m/Y') : 'N/A' }}</strong>
+                                        Suất chiếu: <strong>{{ $showtime ? \Carbon\Carbon::parse($showtime->start_time)->format('H:i - d/m/Y') : 'N/A' }}</strong>
                                         @if($showtime && $showtime->end_time)
                                             <span class="text-secondary">(kết thúc: {{ \Carbon\Carbon::parse($showtime->end_time)->format('H:i') }})</span>
                                         @endif
                                     </div>
                                     <div class="text-light mb-1">
-                                        🏢 Phòng chiếu: <strong>{{ $room->name ?? 'Phòng chiếu' }}</strong>
+                                        Phòng chiếu: <strong>{{ $room->name ?? 'Phòng chiếu' }}</strong>
                                     </div>
                                     <div class="text-secondary small">
                                         Thời lượng: {{ $movie->duration ?? 0 }} phút | Thể loại: {{ $movie->genre ?? 'Chưa cập nhật' }}
@@ -116,7 +116,7 @@
                     <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
                         <div class="card-header border-secondary bg-black bg-opacity-25 py-3 d-flex justify-content-between align-items-center">
                             <h5 class="mb-0 fw-bold text-info">
-                                🎟️ Danh sách tất cả các vé trong đơn ({{ $tickets->count() }} vé)
+                                Danh sách tất cả các vé trong đơn ({{ $tickets->count() }} vé)
                             </h5>
                             <span class="badge bg-secondary">
                                 Tổng: {{ $tickets->count() }} ghế
@@ -186,11 +186,11 @@
                                                         @endif
                                                     @elseif($ticketStatus === 'HOLDING')
                                                         <div class="text-warning small py-2">
-                                                            ⏳ Vé đang được giữ tạm thời
+                                                            Vé đang được giữ tạm thời
                                                         </div>
                                                     @else
                                                         <div class="text-danger small py-2">
-                                                            ✕ Vé đã bị hủy
+                                                            Vé đã bị hủy
                                                         </div>
                                                     @endif
                                                 </div>
@@ -210,7 +210,7 @@
                     <div class="card bg-dark text-white border-secondary shadow-sm">
                         <div class="card-header border-secondary bg-black bg-opacity-25 py-3">
                             <h5 class="mb-0 fw-bold text-white">
-                                💳 Thông tin giao dịch & Thao tác đơn hàng
+                                Thông tin giao dịch & Thao tác đơn hàng
                             </h5>
                         </div>
 
@@ -240,7 +240,7 @@
                                         @endif
                                     @elseif($status === 'PENDING')
                                         <div class="text-warning fw-bold mb-2">
-                                            ⏳ Đơn hàng đang chờ thanh toán
+                                            Đơn hàng đang chờ thanh toán
                                         </div>
                                         @if($holdingExpires)
                                             <div class="d-flex align-items-center gap-2 mb-2">
@@ -253,14 +253,14 @@
                                         </small>
                                     @elseif($status === 'REFUNDED')
                                         <div class="text-info fw-bold mb-2">
-                                            ✓ Đơn hàng đã được hoàn tiền thành công
+                                            Đơn hàng đã được hoàn tiền thành công
                                         </div>
                                         <small class="text-secondary">
                                             Số tiền đã được hoàn lại và các vé trong đơn đã được giải phóng.
                                         </small>
                                     @else
                                         <div class="text-danger fw-bold mb-2">
-                                            ✕ Đơn hàng đã bị hủy
+                                            Đơn hàng đã bị hủy
                                         </div>
                                         <small class="text-secondary">
                                             Đơn hàng đã hết hạn hoặc được hủy thành công.
@@ -276,13 +276,13 @@
                                             <div class="mb-2 text-start">
                                                 <label class="form-label text-secondary small mb-1">Chọn phương thức:</label>
                                                 <select name="payment_method" class="form-select form-select-sm bg-dark text-white border-secondary">
-                                                    <option value="BANK_TRANSFER">🏦 Chuyển khoản (VNPAY)</option>
-                                                    <option value="E_WALLET">📱 Ví điện tử (MoMo)</option>
-                                                    <option value="CARD">💳 Thẻ ngân hàng / Visa</option>
+                                                    <option value="BANK_TRANSFER">Chuyển khoản (VNPAY)</option>
+                                                    <option value="E_WALLET">Ví điện tử (MoMo)</option>
+                                                    <option value="CARD">Thẻ ngân hàng / Visa</option>
                                                 </select>
                                             </div>
                                             <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
-                                                💳 Thanh toán đơn vé ({{ number_format($booking->total_price, 0, ',', '.') }} đ)
+                                                Thanh toán đơn vé ({{ number_format($booking->total_price, 0, ',', '.') }} đ)
                                             </button>
                                         </form>
 
@@ -290,7 +290,7 @@
                                         <form method="POST" action="{{ route('user.account.bookings.cancel', $booking->id) }}" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn đặt vé này? Toàn bộ các ghế đang giữ sẽ được giải phóng.')">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                                                ✕ Hủy đơn đặt vé
+                                                Hủy đơn đặt vé
                                             </button>
                                         </form>
                                     @elseif($status === 'PAID')
@@ -298,15 +298,15 @@
                                             <form method="POST" action="{{ route('user.account.bookings.refund', $booking->id) }}" onsubmit="return confirm('Bạn có chắc chắn muốn gửi YÊU CẦU HOÀN TIỀN cho toàn bộ đơn đặt vé này? (Áp dụng trước giờ chiếu ít nhất 2 tiếng)')">
                                                 @csrf
                                                 <button type="submit" class="btn btn-outline-warning w-100 py-2">
-                                                    💸 Yêu cầu hoàn tiền đơn vé
+                                                    Yêu cầu hoàn tiền đơn vé
                                                 </button>
                                             </form>
                                             <small class="text-secondary d-block mt-2 text-center">
-                                                (Áp dụng khi yêu cầu trước giờ chiếu $\ge$ 2 tiếng)
+                                                (Áp dụng khi yêu cầu trước giờ chiếu &ge; 2 tiếng)
                                             </small>
                                         @elseif($pendingRefund)
                                             <div class="alert alert-warning mb-0 text-center py-2">
-                                                ⏳ Yêu cầu hoàn tiền đang chờ Admin xét duyệt
+                                                Yêu cầu hoàn tiền đang chờ Admin xét duyệt
                                             </div>
                                         @else
                                             <div class="text-muted small text-center">

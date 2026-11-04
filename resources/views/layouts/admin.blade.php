@@ -9,20 +9,50 @@
     <style>
         body { background: #0b1220; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
         .sidebar { min-height: 100vh; background: #0f172a; border-right: 1px solid #1f2937; }
-        .sidebar .nav-link { color: #94a3b8; padding: .65rem 1rem; border-radius: .5rem; margin-bottom: .25rem; }
+        .sidebar .nav-link { color: #94a3b8; padding: .65rem 1rem; border-radius: .5rem; margin-bottom: .25rem; font-weight: 500; }
         .sidebar .nav-link.active, .sidebar .nav-link:hover { color: #f8fafc; background: rgba(14,165,233,0.15); }
-        .card, .content-card, .section-card, .stat-card { background: #111827; border: 1px solid #1f2937; }
+        .card, .content-card, .section-card, .stat-card { background: #131d2e; border: 1px solid #2a3850; color: #f8fafc; }
         .movie-thumb { width: 100%; height: 210px; object-fit: cover; border-radius: .75rem; border: 1px solid #334155; }
         .movie-poster { width: 72px; height: 100px; object-fit: cover; border-radius: .75rem; border: 1px solid #334155; }
-        .form-control, .btn-outline-light, .btn-success, .btn-outline-danger, .form-select { background: #0f172a; color: #f8fafc; border-color: #334155; }
-        .form-control:focus, .form-select:focus { background: #0f172a; color: #f8fafc; border-color: #38bdf8; box-shadow: 0 0 0 .25rem rgba(56,189,248,.25); }
+
+        /* Form elements & inputs high contrast readability */
+        .form-label { color: #f8fafc !important; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.4rem; }
+        .form-control, .form-select {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            border: 1px solid #475569 !important;
+            font-size: 0.95rem;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 0 .25rem rgba(56,189,248,.25) !important;
+        }
+        .form-control::placeholder {
+            color: #94a3b8 !important;
+            opacity: 1;
+        }
+        .form-select option {
+            background-color: #1e293b;
+            color: #ffffff;
+        }
+        .form-text, .text-muted { color: #cbd5e1 !important; }
+        .invalid-feedback { color: #f87171 !important; font-weight: 500; }
+
+        /* Modal styling */
+        .modal-content { background-color: #131d2e !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
+        .modal-header, .modal-footer { border-color: #334155 !important; }
+        .modal-title { color: #ffffff !important; font-weight: 600; }
+        .btn-close { filter: invert(1) grayscale(100%); }
+
+        /* Tables */
         .table-responsive { background: #ffffff; border-radius: .75rem; padding: 1rem; border: 1px solid #cbd5e1; }
         .table { color: #000000 !important; }
         .table thead th { background: #f8fafc; border-bottom: 1px solid #cbd5e1; color: #000000 !important; }
         .table tbody tr { background: #ffffff; }
         .table tbody td { border-color: #e2e8f0; color: #000000 !important; vertical-align: middle; }
         .table-hover tbody tr:hover { background: #f1f5f9; }
-        .text-muted { color: #94a3b8 !important; }
     </style>
 </head>
 <body>
@@ -44,37 +74,37 @@
 
                 <nav class="nav flex-column">
                     <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
-                        📊 Trang chủ
+                        Trang chủ
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.movies.*') ? 'active' : '' }}" href="{{ route('admin.movies.index') }}">
-                        🎬 Quản lý phim
+                        Quản lý phim
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.rooms.*') ? 'active' : '' }}" href="{{ route('admin.rooms.index') }}">
-                        🏢 Quản lý phòng chiếu
+                        Quản lý phòng chiếu
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.showtimes.*') ? 'active' : '' }}" href="{{ route('admin.showtimes.index') }}">
-                        ⏰ Quản lý lịch chiếu
+                        Quản lý lịch chiếu
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.staff.*') ? 'active' : '' }}" href="{{ route('admin.staff.index') }}">
-                        👥 Quản lý nhân viên
+                        Quản lý nhân viên
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.refunds.*') ? 'active' : '' }}" href="{{ route('admin.refunds.index') }}">
-                        💸 Quản lý hoàn tiền
+                        Quản lý hoàn tiền
                     </a>
                     <a class="nav-link {{ request()->routeIs('admin.revenue.*') ? 'active' : '' }}" href="{{ route('admin.revenue.index') }}">
-                        📈 Quản lý doanh thu
+                        Quản lý doanh thu
                     </a>
 
                     <hr class="border-secondary my-3">
 
                     <a class="nav-link" href="{{ route('movies') }}" target="_blank">
-                        🌐 Xem trang người dùng
+                        Xem trang người dùng
                     </a>
 
                     <form method="POST" action="{{ route('logout') }}" class="mt-2">
                         @csrf
                         <button type="submit" class="btn btn-outline-danger btn-sm w-100 text-start">
-                            🚪 Đăng xuất
+                            Đăng xuất
                         </button>
                     </form>
                 </nav>

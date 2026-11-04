@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ route('admin.showtimes.create') }}" class="btn btn-success">
-            ➕ Thêm lịch chiếu mới
+            + Thêm lịch chiếu mới
         </a>
     </div>
 </div>

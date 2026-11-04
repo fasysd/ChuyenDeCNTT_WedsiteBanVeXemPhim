@@ -46,19 +46,19 @@
                 @auth
                     <div class="dropdown">
                         <a class="nav-link-custom dropdown-toggle text-decoration-none" data-bs-toggle="dropdown" href="#" role="button">
-                            👤 {{ Auth::user()->full_name ?: Auth::user()->username }}
+                            {{ Auth::user()->full_name ?: Auth::user()->username }}
                         </a>
 
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
                             @if(Auth::user()->isAdmin())
                                 <li>
                                     <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
-                                        ⚙️ Trang quản trị
+                                        Trang quản trị
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('admin.staff.index') }}">
-                                        👥 Quản lý nhân viên
+                                        Quản lý nhân viên
                                     </a>
                                 </li>
                                 <li>
@@ -67,12 +67,12 @@
                             @elseif(Auth::user()->isStaff())
                                 <li>
                                     <a class="dropdown-item" href="{{ route('staff.bookings') }}">
-                                        📋 Danh sách đặt vé
+                                        Danh sách đặt vé
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('staff.tickets') }}">
-                                        🎟️ Tra cứu / Soát vé
+                                        Tra cứu / Soát vé
                                     </a>
                                 </li>
                                 <li>
@@ -81,12 +81,12 @@
                             @else
                                 <li>
                                     <a class="dropdown-item" href="{{ route('user.account.general') }}">
-                                        👤 Thông tin tài khoản
+                                        Thông tin tài khoản
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('user.account.tickets') }}">
-                                        🎟️ Vé của tôi
+                                        Vé của tôi
                                     </a>
                                 </li>
                                 <li>
@@ -98,7 +98,7 @@
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
-                                        🚪 Đăng xuất
+                                        Đăng xuất
                                     </button>
                                 </form>
                             </li>

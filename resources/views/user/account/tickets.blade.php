@@ -80,7 +80,7 @@
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
                                         @if($pendingRefund)
-                                            <span class="badge bg-warning text-dark px-2 py-1">⏳ Đang chờ hoàn tiền</span>
+                                            <span class="badge bg-warning text-dark px-2 py-1">Đang chờ hoàn tiền</span>
                                         @endif
                                         <span class="badge {{ $statusBadge }} px-3 py-2 fs-6">
                                             {{ $statusText }}
@@ -96,10 +96,10 @@
                                                 {{ $movie->title ?? 'N/A' }}
                                             </h4>
                                             <div class="text-secondary mb-1">
-                                                ⏰ Suất chiếu: <strong>{{ $showtime ? \Carbon\Carbon::parse($showtime->start_time)->format('H:i - d/m/Y') : 'N/A' }}</strong>
+                                                Suất chiếu: <strong>{{ $showtime ? \Carbon\Carbon::parse($showtime->start_time)->format('H:i - d/m/Y') : 'N/A' }}</strong>
                                             </div>
                                             <div class="text-secondary mb-2">
-                                                🏢 Phòng: <strong>{{ $showtime->room->name ?? 'Phòng chiếu' }}</strong>
+                                                Phòng chiếu: <strong>{{ $showtime->room->name ?? 'Phòng chiếu' }}</strong>
                                             </div>
 
                                             {{-- Danh sách ghế đã chọn --}}
@@ -128,7 +128,7 @@
                                                     </div>
                                                 </div>
                                             @elseif($status === 'PAID')
-                                                <small class="text-success d-block mt-1">✓ Đã thanh toán đầy đủ</small>
+                                                <small class="text-success d-block mt-1">Đã thanh toán đầy đủ</small>
                                             @endif
                                         </div>
 
@@ -137,7 +137,7 @@
                                             @if($status === 'PENDING')
                                                 {{-- Nút xem chi tiết các vé --}}
                                                 <a href="{{ route('user.account.tickets.show', $booking->id) }}" class="btn btn-sm btn-outline-light w-100 mb-2">
-                                                    👁️ Xem chi tiết các vé
+                                                    Xem chi tiết các vé
                                                 </a>
 
                                                 {{-- Form Thanh toán Đơn hàng --}}
@@ -145,13 +145,13 @@
                                                     @csrf
                                                     <div class="mb-2 text-start">
                                                         <select name="payment_method" class="form-select form-select-sm bg-dark text-white border-secondary">
-                                                            <option value="BANK_TRANSFER">🏦 Chuyển khoản (VNPAY)</option>
-                                                            <option value="E_WALLET">📱 Ví điện tử (MoMo)</option>
-                                                            <option value="CARD">💳 Thẻ ngân hàng / Visa</option>
+                                                            <option value="BANK_TRANSFER">Chuyển khoản (VNPAY)</option>
+                                                            <option value="E_WALLET">Ví điện tử (MoMo)</option>
+                                                            <option value="CARD">Thẻ ngân hàng / Visa</option>
                                                         </select>
                                                     </div>
                                                     <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
-                                                        💳 Thanh toán ngay
+                                                        Thanh toán ngay
                                                     </button>
                                                 </form>
 
@@ -159,26 +159,26 @@
                                                 <form method="POST" action="{{ route('user.account.bookings.cancel', $booking->id) }}" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn đặt vé này? Các ghế đang giữ sẽ được giải phóng.')">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                                                        ✕ Hủy đơn
+                                                        Hủy đơn
                                                     </button>
                                                 </form>
 
                                             @elseif($status === 'PAID')
                                                 {{-- Đơn đã thanh toán: Nút xem tất cả các vé trong đơn & Nút Yêu cầu hoàn tiền --}}
                                                 <a href="{{ route('user.account.tickets.show', $booking->id) }}" class="btn btn-sm btn-outline-info w-100 mb-2">
-                                                    🎟️ Xem chi tiết vé
+                                                    Xem chi tiết vé
                                                 </a>
 
                                                 @if($booking->canRequestRefund())
                                                     <form method="POST" action="{{ route('user.account.bookings.refund', $booking->id) }}" onsubmit="return confirm('Bạn có chắc chắn muốn gửi YÊU CẦU HOÀN TIỀN cho đơn vé này? (Áp dụng trước giờ chiếu ít nhất 2 tiếng)')">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm btn-outline-warning w-100">
-                                                            💸 Yêu cầu hoàn tiền
+                                                            Yêu cầu hoàn tiền
                                                         </button>
                                                     </form>
                                                 @elseif($pendingRefund)
                                                     <div class="small text-warning text-center">
-                                                        Yêu cầu hoàn tiền đang chờ Admin duyệt
+                                                        Yêu cầu hoàn tiền đang chờ duyệt
                                                     </div>
                                                 @elseif($completedRefund)
                                                     <div class="small text-success text-center">
@@ -215,7 +215,6 @@
                             </div>
                         @empty
                             <div class="text-center py-5 text-muted border border-secondary rounded">
-                                <div class="fs-1 mb-3">🎬</div>
                                 <h5>Bạn chưa có đơn đặt vé nào.</h5>
                                 <p class="small">Hãy chọn một bộ phim yêu thích và trải nghiệm đặt vé xem phim ngay!</p>
                                 <a href="{{ route('movies') }}" class="btn btn-warning mt-2">

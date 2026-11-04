@@ -47,7 +47,9 @@ class MovieController extends Controller
      */
     public function show(string $id)
     {
-        $movie = Movie::with('showtimes')->findOrFail($id);
+        $movie = Movie::with(['showtimes' => function ($q) {
+            $q->orderBy('start_time');
+        }, 'showtimes.room'])->findOrFail($id);
 
         $suggestedMovies = Movie::where('id', '!=', $movie->id)
             ->latest('id')

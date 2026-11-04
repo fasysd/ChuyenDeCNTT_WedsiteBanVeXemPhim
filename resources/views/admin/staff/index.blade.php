@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ route('admin.staff.create') }}" class="btn btn-success">
-            ➕ Thêm nhân viên mới
+            + Thêm nhân viên mới
         </a>
     </div>
 </div>

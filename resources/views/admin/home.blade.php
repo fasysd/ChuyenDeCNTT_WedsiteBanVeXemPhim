@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ route('admin.movies.create') }}" class="btn btn-success">
-            ➕ Thêm phim mới
+            + Thêm phim mới
         </a>
     </div>
 </div>
@@ -37,16 +37,16 @@
     <div class="col-md">
         <a href="{{ route('admin.revenue.index') }}" class="text-decoration-none">
             <div class="card p-3 border-success h-100 hover-card">
-                <span class="text-success small fw-bold">📈 Quản lý doanh thu</span>
-                <div class="text-white small mt-1">Báo cáo & Biểu đồ →</div>
+                <span class="text-success small fw-bold">Quản lý doanh thu</span>
+                <div class="text-white small mt-1">Báo cáo & Biểu đồ &rarr;</div>
             </div>
         </a>
     </div>
     <div class="col-md">
         <a href="{{ route('admin.refunds.index') }}" class="text-decoration-none">
             <div class="card p-3 border-warning h-100 hover-card">
-                <span class="text-warning small fw-bold">💸 Quản lý hoàn tiền</span>
-                <div class="text-white small mt-1">Duyệt yêu cầu →</div>
+                <span class="text-warning small fw-bold">Quản lý hoàn tiền</span>
+                <div class="text-white small mt-1">Duyệt yêu cầu &rarr;</div>
             </div>
         </a>
     </div>
