@@ -18,8 +18,9 @@ use App\Http\Controllers\TicketController;
 | 1. KHÁCH (PUBLIC ROUTES)
 |--------------------------------------------------------------------------
 */
-Route::get('/', [MovieController::class, 'index'])->name('user.index');
-Route::get('/movies', [MovieController::class, 'index'])->name('movies');
+Route::get('/', [MovieController::class, 'home'])->name('home');
+Route::get('/home', fn() => redirect()->route('home'));
+Route::get('/movies', [MovieController::class, 'movies'])->name('movies');
 Route::get('/movies/{id}', [MovieController::class, 'show'])->name('movie.show');
 Route::get('/help/about', function () {
     return view('user.help.about');

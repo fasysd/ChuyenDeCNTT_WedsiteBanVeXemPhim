@@ -35,7 +35,7 @@ class AuthController extends Controller
                 return redirect()->route('staff.bookings');
             }
 
-            return redirect()->intended(route('movies'));
+            return redirect()->intended(route('home'));
         }
 
         return back()
@@ -81,7 +81,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('movies')->with('success', 'Đăng ký tài khoản thành công!');
+        return redirect()->intended(route('home'))->with('success', 'Đăng ký tài khoản thành công!');
     }
 
     public function logout(Request $request)

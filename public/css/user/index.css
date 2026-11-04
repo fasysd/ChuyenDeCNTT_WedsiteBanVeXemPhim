@@ -11,8 +11,102 @@
 }
 
 #homeBanner{
-    border-radius:16px;
-    overflow:hidden;
+    border-radius: 0 0 16px 16px;
+    overflow: hidden;
+    background: #0f172a;
+}
+
+/* Banner Layout Hình Chữ Nhật Ngang */
+.banner-horizontal-wrapper {
+    min-height: 440px;
+    height: 440px;
+    position: relative;
+    background: #090e17;
+    overflow: hidden;
+}
+
+.banner-info-col {
+    position: relative;
+    z-index: 5;
+}
+
+.banner-movie-title {
+    color: #ffffff !important;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+    letter-spacing: -0.5px;
+}
+
+.banner-movie-desc {
+    color: #e2e8f0 !important;
+    line-height: 1.6;
+    max-width: 600px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+
+.banner-poster-col {
+    height: 100%;
+}
+
+.banner-poster-container {
+    height: 380px;
+    width: auto;
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: -15px 0 35px rgba(0, 0, 0, 0.85);
+}
+
+.banner-poster-img {
+    height: 100%;
+    max-height: 380px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+/* Dải chuyển màu mờ dần ở giữa (Gradient Transition) */
+.banner-fade-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+    background: linear-gradient(
+        90deg,
+        #090e17 0%,
+        #090e17 48%,
+        rgba(9, 14, 23, 0.85) 62%,
+        rgba(9, 14, 23, 0.3) 80%,
+        transparent 100%
+    );
+}
+
+@media (max-width: 991px) {
+    .banner-horizontal-wrapper {
+        height: auto;
+        min-height: 480px;
+        padding: 30px 0;
+    }
+    .banner-poster-container {
+        height: 280px;
+        margin-top: 15px;
+    }
+    .banner-movie-title {
+        font-size: 2rem !important;
+    }
+    .banner-fade-overlay {
+        background: linear-gradient(
+            0deg,
+            #090e17 0%,
+            rgba(9, 14, 23, 0.8) 50%,
+            rgba(9, 14, 23, 0.3) 100%
+        );
+    }
 }
 
 .movie-section{
@@ -78,4 +172,28 @@
 
 .movie-card .badge{
     font-size:.75rem;
+}
+
+/* Movie Slider Styles */
+.movie-slider-track {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.movie-slider-track::-webkit-scrollbar {
+    display: none;
+}
+
+.slider-btn-prev, .slider-btn-next {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.slider-btn-prev:hover, .slider-btn-next:hover {
+    background: #00c16a;
+    border-color: #00c16a;
+    color: #ffffff;
+    transform: scale(1.08);
 }

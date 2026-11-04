@@ -22,13 +22,13 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-custom">
         <div class="container">
-            <a class="logo text-decoration-none" href="{{ route('movies') }}">
+            <a class="logo text-decoration-none" href="{{ route('home') }}">
                 CineGo
             </a>
 
             <div class="d-flex align-items-center ms-4">
-                <a href="{{ route('movies') }}" class="nav-link-custom">Phim</a>
                 <a href="{{ route('user.help.about') }}" class="nav-link-custom">Giới thiệu rạp</a>
+                <a href="{{ route('movies') }}" class="nav-link-custom">Kho phim</a>
                 @auth
                     @if(Auth::user()->isAdmin())
                         <a href="{{ route('admin.dashboard') }}" class="nav-link-custom text-warning">Trang Quản trị</a>
@@ -124,6 +124,54 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.movie-section').forEach(function (section) {
+                const track = section.querySelector('.movie-slider-track');
+                const btnPrev = section.querySelector('.slider-btn-prev');
+                const btnNext = section.querySelector('.slider-btn-next');
+                if (!track || !btnPrev || !btnNext) return;
+
+                function updateButtons() {
+                    const maxScroll = track.scrollWidth - track.clientWidth;
+                    if (maxScroll <= 2) {
+                        btnPrev.style.display = 'none';
+                        btnNext.style.display = 'none';
+                        return;
+                    }
+
+                    if (track.scrollLeft <= 5) {
+                        btnPrev.style.display = 'none';
+                    } else {
+                        btnPrev.style.display = 'inline-flex';
+                    }
+
+                    if (track.scrollLeft >= maxScroll - 5) {
+                        btnNext.style.display = 'none';
+                    } else {
+                        btnNext.style.display = 'inline-flex';
+                    }
+                }
+
+                btnNext.addEventListener('click', function () {
+                    const step = Math.max(250, track.clientWidth * 0.75);
+                    track.scrollBy({ left: step, behavior: 'smooth' });
+                });
+
+                btnPrev.addEventListener('click', function () {
+                    const step = Math.max(250, track.clientWidth * 0.75);
+                    track.scrollBy({ left: -step, behavior: 'smooth' });
+                });
+
+                track.addEventListener('scroll', updateButtons);
+                window.addEventListener('resize', updateButtons);
+
+                updateButtons();
+                setTimeout(updateButtons, 200);
+                setTimeout(updateButtons, 600);
+            });
+        });
+    </script>
 </body>
 
 </html>

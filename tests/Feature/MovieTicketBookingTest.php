@@ -27,16 +27,47 @@ class MovieTicketBookingTest extends TestCase
             'genre' => 'Sci-Fi',
         ]);
 
-        $responseHome = $this->get('/movies');
+        $movie2 = Movie::create([
+            'title' => 'Inside Out',
+            'duration' => 96,
+            'release_date' => now()->addDays(5),
+            'genre' => 'Animation',
+        ]);
+
+        // Kiểm tra trang chủ (Home)
+        $responseHome = $this->get('/');
         $responseHome->assertStatus(200);
         $responseHome->assertSee('Dune 2');
+        $responseHome->assertSee('Kho phim');
+        $responseHome->assertSee('Giới thiệu rạp');
 
+        // Kiểm tra trang Kho phim (Movies Catalog)
+        $responseCatalog = $this->get('/movies');
+        $responseCatalog->assertStatus(200);
+        $responseCatalog->assertSee('Kho phim CineGo');
+        $responseCatalog->assertSee('Dune 2');
+        $responseCatalog->assertSee('Inside Out');
+
+        // Tìm kiếm theo từ khóa
+        $responseSearch = $this->get('/movies?q=Dune');
+        $responseSearch->assertStatus(200);
+        $responseSearch->assertSee('Dune 2');
+        $responseSearch->assertDontSee('Inside Out');
+
+        // Lọc theo thể loại
+        $responseGenre = $this->get('/movies?genre=Animation');
+        $responseGenre->assertStatus(200);
+        $responseGenre->assertSee('Inside Out');
+        $responseGenre->assertDontSee('Dune 2');
+
+        // Chi tiết phim
         $responseDetail = $this->get('/movies/' . $movie->id);
         $responseDetail->assertStatus(200);
         $responseDetail->assertSee('Dune 2');
         $responseDetail->assertSee('Đặt vé ngay');
         $responseDetail->assertSee('Lịch chiếu phim');
 
+        // Giới thiệu rạp
         $responseAbout = $this->get('/help/about');
         $responseAbout->assertStatus(200);
     }
@@ -52,7 +83,7 @@ class MovieTicketBookingTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
-        $responseRegister->assertRedirect(route('movies'));
+        $responseRegister->assertRedirect(route('home'));
         $this->assertAuthenticated();
 
         $this->post('/logout');
@@ -62,7 +93,7 @@ class MovieTicketBookingTest extends TestCase
             'username' => 'testuser',
             'password' => 'password123',
         ]);
-        $responseLogin->assertRedirect(route('movies'));
+        $responseLogin->assertRedirect(route('home'));
         $this->assertAuthenticated();
     }
 
