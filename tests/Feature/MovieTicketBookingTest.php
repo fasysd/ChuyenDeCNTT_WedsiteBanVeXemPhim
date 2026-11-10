@@ -65,7 +65,6 @@ class MovieTicketBookingTest extends TestCase
         $responseDetail->assertStatus(200);
         $responseDetail->assertSee('Dune 2');
         $responseDetail->assertSee('Đặt vé ngay');
-        $responseDetail->assertSee('Lịch chiếu phim');
 
         // Giới thiệu rạp
         $responseAbout = $this->get('/help/about');

@@ -12,6 +12,7 @@ use App\Models\TicketDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -97,6 +98,9 @@ class TicketController extends Controller
      */
     public function booking(Request $request, Movie $movie)
     {
+        // Tự động giải phóng các ghế giữ chỗ đã hết hạn trước khi hiển thị sơ đồ ghế
+        Booking::releaseExpiredBookings();
+
         $showtimes = Showtime::where('movie_id', $movie->id)
             ->where('end_time', '>=', now())
             ->orderBy('start_time')
@@ -171,6 +175,7 @@ class TicketController extends Controller
 
     /**
      * Lưu thông tin đặt vé vào cơ sở dữ liệu
+     * Sử dụng mô hình bảo vệ kép (Atomic Cache Lock + DB Pessimistic Lock) chống Race Condition
      */
     public function store(Request $request, Movie $movie)
     {
@@ -182,57 +187,116 @@ class TicketController extends Controller
             'seat_ids.required' => 'Vui lòng chọn ít nhất một ghế.',
         ]);
 
-        $seatIds = $request->seat_ids;
+        // 1. Sắp xếp danh sách ID ghế tăng dần để chống Deadlock tuần tự
+        $seatIds = collect($request->seat_ids)->map(fn($id) => (int)$id)->sort()->values()->all();
         $showtime = Showtime::findOrFail($request->showtime_id);
 
-        // Kiểm tra xem ghế đã bị ai khác đặt trước chưa
-        $alreadyTaken = TicketDetail::where('showtime_id', $showtime->id)
-            ->whereIn('seat_id', $seatIds)
-            ->whereIn('status', ['HOLDING', 'BOOKED', 'USED'])
-            ->exists();
+        // Tự động giải phóng các ghế giữ chỗ đã hết hạn trước khi kiểm tra
+        Booking::releaseExpiredBookings();
 
-        if ($alreadyTaken) {
-            return redirect()
-                ->route('ticket.booking', $movie->id)
-                ->with('error', 'Một hoặc nhiều ghế bạn chọn vừa được người khác đặt. Vui lòng chọn ghế khác.');
+        // 2. Tầng 1: Cache Atomic Lock (Fail-Fast: Chặn ngay từ tầng ứng dụng)
+        $acquiredLocks = [];
+        $lockAcquired = true;
+
+        foreach ($seatIds as $seatId) {
+            $lockKey = "lock:showtime:{$showtime->id}:seat:{$seatId}";
+            $lock = Cache::lock($lockKey, 10); // Khóa trong 10 giây
+            if (!$lock->get()) {
+                $lockAcquired = false;
+                break;
+            }
+            $acquiredLocks[] = $lock;
         }
 
-        $seats = Seat::whereIn('id', $seatIds)->get();
-
-        DB::transaction(function () use ($seats, $showtime) {
-            // Tính tổng tiền chính xác phân biệt Standard và VIP
-            $totalPrice = 0;
-            $seatPrices = [];
-
-            foreach ($seats as $seat) {
-                $price = $seat->type === 'VIP'
-                    ? round($showtime->price_standard * 1.2)
-                    : $showtime->price_standard;
-                $seatPrices[$seat->id] = $price;
-                $totalPrice += $price;
+        if (!$lockAcquired) {
+            foreach ($acquiredLocks as $lock) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $e) {
+                }
             }
 
-            // Tạo đơn Booking với thời gian giữ chỗ 10 phút
-            $holdingExpiresAt = now()->addMinutes(10);
-            $booking = Booking::create([
-                'user_id' => Auth::id(),
-                'total_price' => $totalPrice,
-                'status' => 'PENDING',
-                'holding_expires_at' => $holdingExpiresAt,
-                'expired_at' => $holdingExpiresAt,
-            ]);
+            return redirect()
+                ->route('ticket.booking', $movie->id)
+                ->with('error', 'Một hoặc nhiều ghế bạn chọn đang được người khác giữ chỗ. Vui lòng chọn ghế khác hoặc thử lại sau giây lát.');
+        }
 
-            // Tạo từng chi tiết vé TicketDetail ở trạng thái HOLDING
-            foreach ($seats as $seat) {
-                TicketDetail::create([
-                    'booking_id' => $booking->id,
-                    'showtime_id' => $showtime->id,
-                    'seat_id' => $seat->id,
-                    'final_price' => $seatPrices[$seat->id],
-                    'status' => 'HOLDING',
+        // 3. Tầng 2: Database Transaction + Pessimistic Lock (ACID Guarantee)
+        try {
+            DB::transaction(function () use ($seatIds, $showtime) {
+                // Khóa các bản ghi ghế theo thứ tự để tuần tự hóa giao dịch
+                $seats = Seat::whereIn('id', $seatIds)->orderBy('id')->lockForUpdate()->get();
+
+                // Kiểm tra xem ghế đã bị ai khác đặt hoặc giữ chỗ hợp lệ chưa (với lock)
+                $alreadyTaken = TicketDetail::where('showtime_id', $showtime->id)
+                    ->whereIn('seat_id', $seatIds)
+                    ->whereIn('status', ['HOLDING', 'BOOKED', 'USED'])
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($alreadyTaken) {
+                    throw new \DomainException('Một hoặc nhiều ghế bạn chọn vừa được người khác đặt. Vui lòng chọn ghế khác.');
+                }
+
+                // Tính tổng tiền chính xác phân biệt Standard và VIP
+                $totalPrice = 0;
+                $seatPrices = [];
+
+                foreach ($seats as $seat) {
+                    $price = $seat->type === 'VIP'
+                        ? round($showtime->price_standard * 1.2)
+                        : $showtime->price_standard;
+                    $seatPrices[$seat->id] = $price;
+                    $totalPrice += $price;
+                }
+
+                // Tạo đơn Booking với thời gian giữ chỗ 10 phút
+                $holdingExpiresAt = now()->addMinutes(10);
+                $booking = Booking::create([
+                    'user_id' => Auth::id(),
+                    'total_price' => $totalPrice,
+                    'status' => 'PENDING',
+                    'holding_expires_at' => $holdingExpiresAt,
+                    'expired_at' => $holdingExpiresAt,
                 ]);
+
+                // Tạo hoặc cập nhật từng chi tiết vé (xử lý an toàn khi ghế từng bị CANCELLED trước đó)
+                foreach ($seats as $seat) {
+                    TicketDetail::updateOrCreate(
+                        [
+                            'showtime_id' => $showtime->id,
+                            'seat_id' => $seat->id,
+                        ],
+                        [
+                            'booking_id' => $booking->id,
+                            'final_price' => $seatPrices[$seat->id],
+                            'status' => 'HOLDING',
+                        ]
+                    );
+                }
+            });
+        } catch (\DomainException $e) {
+            return redirect()
+                ->route('ticket.booking', $movie->id)
+                ->with('error', $e->getMessage());
+        } catch (\Illuminate\Database\QueryException $e) {
+            return redirect()
+                ->route('ticket.booking', $movie->id)
+                ->with('error', 'Một hoặc nhiều ghế bạn chọn vừa được người khác đặt trước. Vui lòng chọn ghế khác.');
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()
+                ->route('ticket.booking', $movie->id)
+                ->with('error', 'Đã xảy ra lỗi trong quá trình đặt vé. Vui lòng thử lại sau giây lát.');
+        } finally {
+            // Luôn giải phóng tất cả Cache Lock
+            foreach ($acquiredLocks as $lock) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $e) {
+                }
             }
-        });
+        }
 
         return redirect()
             ->route('user.account.tickets')

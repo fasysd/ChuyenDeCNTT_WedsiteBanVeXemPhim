@@ -14,7 +14,7 @@
     <form method="GET" action="{{ route('staff.tickets') }}">
         <div class="input-group">
             <input type="text" name="q" class="form-control" placeholder="Nhập mã vé (ví dụ: 1) hoặc mã đơn đặt..." value="{{ $query }}">
-            <button class="btn btn-info px-4" type="submit">🔍 Tìm kiếm</button>
+            <button class="btn btn-info px-4" type="submit">Tìm kiếm</button>
             @if($query !== '')
                 <a href="{{ route('staff.tickets') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
             @endif
@@ -29,11 +29,11 @@
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <h4 class="text-warning mb-2">{{ $ticket->showtime?->movie?->title ?? 'N/A' }}</h4>
-                    <p class="mb-1"><strong>Mã vé:</strong> #{{ $ticket->id }} | <strong>Mã đơn:</strong> #{{ $ticket->booking_id }}</p>
-                    <p class="mb-1"><strong>Khách hàng:</strong> {{ $ticket->booking?->user->full_name ?: $ticket->booking?->user->username ?: 'Khách hàng' }} (SĐT: {{ $ticket->booking?->user->phone ?? 'Chưa cập nhật' }})</p>
-                    <p class="mb-1"><strong>Phòng:</strong> {{ $ticket->showtime?->room?->name ?? 'N/A' }} | <strong>Ghế:</strong> {{ $ticket->seat?->label }} ({{ $ticket->seat?->type }})</p>
-                    <p class="mb-1"><strong>Suất chiếu:</strong> {{ $ticket->showtime ? \Carbon\Carbon::parse($ticket->showtime->start_time)->format('H:i d/m/Y') : 'N/A' }}</p>
-                    <p class="mb-0"><strong>Trạng thái:</strong> <span class="badge bg-warning text-dark">{{ $statuses[$ticket->status] ?? $ticket->status }}</span></p>
+                    <p class="mb-1 text-light"><strong>Mã vé:</strong> #{{ $ticket->id }} | <strong>Mã đơn:</strong> #{{ $ticket->booking_id }}</p>
+                    <p class="mb-1 text-light"><strong>Khách hàng:</strong> {{ $ticket->booking?->user->full_name ?: $ticket->booking?->user->username ?: 'Khách hàng' }} (SĐT: {{ $ticket->booking?->user->phone ?? 'Chưa cập nhật' }})</p>
+                    <p class="mb-1 text-light"><strong>Phòng:</strong> {{ $ticket->showtime?->room?->name ?? 'N/A' }} | <strong>Ghế:</strong> {{ $ticket->seat?->label }} ({{ $ticket->seat?->type }})</p>
+                    <p class="mb-1 text-light"><strong>Suất chiếu:</strong> {{ $ticket->showtime ? \Carbon\Carbon::parse($ticket->showtime->start_time)->format('H:i d/m/Y') : 'N/A' }}</p>
+                    <p class="mb-0 text-light"><strong>Trạng thái:</strong> <span class="badge bg-warning text-dark">{{ $statuses[$ticket->status] ?? $ticket->status }}</span></p>
                 </div>
                 <div class="col-md-4 text-end">
                     <a href="{{ route('staff.tickets.show', $ticket) }}" class="btn btn-primary btn-lg">

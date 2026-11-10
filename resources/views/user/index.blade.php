@@ -36,11 +36,6 @@
                                                     BOM TẤN PHÒNG VÉ
                                                 </span>
                                             @endif
-                                            @if($movie->duration)
-                                                <span class="badge bg-dark border border-secondary text-light px-3 py-2 fs-6 ms-2">
-                                                    {{ $movie->duration }} phút
-                                                </span>
-                                            @endif
                                         </div>
 
                                         <h2 class="display-5 fw-bold text-white mb-2 banner-movie-title">

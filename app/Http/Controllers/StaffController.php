@@ -59,23 +59,35 @@ class StaffController extends Controller
     {
         $ticket->load(['booking.user', 'showtime.movie', 'seat', 'showtime.room']);
 
-        $statuses = [
-            'HOLDING' => 'Đang giữ chỗ',
-            'BOOKED' => 'Đã thanh toán',
-            'USED' => 'Đã sử dụng',
-            'CANCELLED' => 'Đã hủy',
+        // Chỉ cho phép chuyển đổi từ BOOKED sang USED hoặc CANCELLED
+        $allowedTransitions = [
+            'BOOKED' => [
+                'USED' => 'Đã sử dụng',
+                'CANCELLED' => 'Đã hủy',
+            ],
         ];
 
-        return view('staff.tickets.show', compact('ticket', 'statuses'));
+        $availableStatuses = $allowedTransitions[$ticket->status] ?? [];
+
+        return view('staff.tickets.show', compact('ticket', 'availableStatuses'));
     }
 
     /**
-     * Cập nhật trạng thái vé (ví dụ: Chuyển sang Đã sử dụng khi khách vào rạp)
+     * Cập nhật trạng thái vé (chỉ cho phép sửa từ BOOKED sang USED hoặc CANCELLED)
      */
     public function updateStatus(Request $request, TicketDetail $ticket)
     {
+        // Kiểm tra điều kiện chỉ cho phép sửa vé có trạng thái BOOKED
+        if ($ticket->status !== 'BOOKED') {
+            return redirect()
+                ->route('staff.tickets.show', $ticket)
+                ->with('error', 'Chỉ được phép cập nhật vé đang ở trạng thái "Đã thanh toán" (BOOKED).');
+        }
+
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['HOLDING', 'BOOKED', 'USED', 'CANCELLED'])],
+            'status' => ['required', Rule::in(['USED', 'CANCELLED'])],
+        ], [
+            'status.in' => 'Chỉ được phép chuyển trạng thái vé sang "Đã sử dụng" hoặc "Đã hủy".',
         ]);
 
         $ticket->update(['status' => $validated['status']]);

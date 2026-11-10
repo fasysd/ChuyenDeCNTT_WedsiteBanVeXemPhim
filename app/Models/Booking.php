@@ -119,4 +119,32 @@ class Booking extends Model
         $startTime = Carbon::parse($showtime->start_time);
         return now()->diffInMinutes($startTime, false) >= 120;
     }
+
+    /**
+     * Tự động giải phóng các đơn đặt vé quá thời gian giữ chỗ (10 phút)
+     */
+    public static function releaseExpiredBookings(): int
+    {
+        $now = now();
+        $expiredBookings = static::where('status', 'PENDING')
+            ->where(function ($q) use ($now) {
+                $q->whereNotNull('holding_expires_at')->where('holding_expires_at', '<=', $now)
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->whereNotNull('expired_at')->where('expired_at', '<=', $now);
+                  });
+            })
+            ->get();
+
+        $count = 0;
+        foreach ($expiredBookings as $booking) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+                $booking->update(['status' => 'CANCELLED']);
+                $booking->ticketDetails()->where('status', 'HOLDING')->update(['status' => 'CANCELLED']);
+                $booking->payments()->where('status', 'PENDING')->update(['status' => 'CANCELLED']);
+            });
+            $count++;
+        }
+
+        return $count;
+    }
 }
