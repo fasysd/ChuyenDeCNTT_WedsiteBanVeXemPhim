@@ -23,28 +23,28 @@
 </div>
 
 @if($query !== '')
-    <h4 class="text-light mb-3">Kết quả tìm kiếm cho: "{{ $query }}"</h4>
-    @if($ticket)
-        <div class="card p-4 border-info mb-4">
+    <h4 class="text-light mb-3">Kết quả tìm kiếm cho: "{{ $query }}" ({{ $matchedTickets->count() }} vé)</h4>
+    @forelse($matchedTickets as $matchedTicket)
+        <div class="card p-4 border-info mb-3">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h4 class="text-warning mb-2">{{ $ticket->showtime?->movie?->title ?? 'N/A' }}</h4>
-                    <p class="mb-1 text-light"><strong>Mã vé:</strong> #{{ $ticket->id }} | <strong>Mã đơn:</strong> #{{ $ticket->booking_id }}</p>
-                    <p class="mb-1 text-light"><strong>Khách hàng:</strong> {{ $ticket->booking?->user->full_name ?: $ticket->booking?->user->username ?: 'Khách hàng' }} (SĐT: {{ $ticket->booking?->user->phone ?? 'Chưa cập nhật' }})</p>
-                    <p class="mb-1 text-light"><strong>Phòng:</strong> {{ $ticket->showtime?->room?->name ?? 'N/A' }} | <strong>Ghế:</strong> {{ $ticket->seat?->label }} ({{ $ticket->seat?->type }})</p>
-                    <p class="mb-1 text-light"><strong>Suất chiếu:</strong> {{ $ticket->showtime ? \Carbon\Carbon::parse($ticket->showtime->start_time)->format('H:i d/m/Y') : 'N/A' }}</p>
-                    <p class="mb-0 text-light"><strong>Trạng thái:</strong> <span class="badge bg-warning text-dark">{{ $statuses[$ticket->status] ?? $ticket->status }}</span></p>
+                    <h4 class="text-warning mb-2">{{ $matchedTicket->showtime?->movie?->title ?? 'N/A' }}</h4>
+                    <p class="mb-1 text-light"><strong>Mã vé:</strong> #{{ $matchedTicket->id }} | <strong>Mã đơn:</strong> #{{ $matchedTicket->booking_id }}</p>
+                    <p class="mb-1 text-light"><strong>Khách hàng:</strong> {{ $matchedTicket->booking?->user->full_name ?: $matchedTicket->booking?->user->username ?: 'Khách hàng' }} (SĐT: {{ $matchedTicket->booking?->user->phone ?? 'Chưa cập nhật' }})</p>
+                    <p class="mb-1 text-light"><strong>Phòng:</strong> {{ $matchedTicket->showtime?->room?->name ?? 'N/A' }} | <strong>Ghế:</strong> {{ $matchedTicket->seat?->label }} ({{ $matchedTicket->seat?->type }})</p>
+                    <p class="mb-1 text-light"><strong>Suất chiếu:</strong> {{ $matchedTicket->showtime ? \Carbon\Carbon::parse($matchedTicket->showtime->start_time)->format('H:i d/m/Y') : 'N/A' }}</p>
+                    <p class="mb-0 text-light"><strong>Trạng thái:</strong> <span class="badge bg-warning text-dark">{{ $statuses[$matchedTicket->status] ?? $matchedTicket->status }}</span></p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <a href="{{ route('staff.tickets.show', $ticket) }}" class="btn btn-primary btn-lg">
+                    <a href="{{ route('staff.tickets.show', $matchedTicket) }}" class="btn btn-primary btn-lg">
                         Xử lý / Soát vé
                     </a>
                 </div>
             </div>
         </div>
-    @else
+    @empty
         <div class="alert alert-warning mb-4">Không tìm thấy vé nào khớp với mã "{{ $query }}".</div>
-    @endif
+    @endforelse
 @endif
 
 <h5 class="text-light mb-3">Vé mới đặt gần đây</h5>

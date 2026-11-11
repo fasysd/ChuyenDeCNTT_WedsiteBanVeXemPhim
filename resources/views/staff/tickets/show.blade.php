@@ -102,7 +102,7 @@
                             @endforeach
                         </select>
                         <small class="text-muted d-block mt-1">
-                            Vé đã thanh toán chỉ được phép chuyển sang "Đã sử dụng" hoặc "Đã hủy".
+                            Vé đã thanh toán chỉ được phép xác nhận sang trạng thái "Đã sử dụng".
                         </small>
                     </div>
 

@@ -41,14 +41,14 @@ class AdminStaffController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'full_name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'username.required' => 'Vui lòng nhập tên đăng nhập.',
             'username.unique' => 'Tên đăng nhập đã tồn tại.',
             'email.required' => 'Vui lòng nhập email.',
             'email.unique' => 'Email đã được sử dụng.',
             'password.required' => 'Vui lòng nhập mật khẩu.',
-            'password.min' => 'Mật khẩu phải từ 6 ký tự trở lên.',
+            'password.min' => 'Mật khẩu phải từ 8 ký tự trở lên.',
             'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
         ]);
 
@@ -117,10 +117,10 @@ class AdminStaffController extends Controller
         $this->ensureStaff($staff);
 
         $validated = $request->validate([
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'password.required' => 'Vui lòng nhập mật khẩu mới.',
-            'password.min' => 'Mật khẩu phải từ 6 ký tự trở lên.',
+            'password.min' => 'Mật khẩu phải từ 8 ký tự trở lên.',
             'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
         ]);
 

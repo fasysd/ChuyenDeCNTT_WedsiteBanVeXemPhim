@@ -28,21 +28,15 @@ class MovieController extends Controller
             return $m->release_date && $m->release_date->format('Y-m-d') > $now;
         });
 
-        // Nếu dữ liệu mẫu chưa có phim sắp chiếu hoặc đang chiếu, dùng toàn bộ phim để đảm bảo giao diện đẹp
-        if ($nowShowing->isEmpty()) {
-            $nowShowing = $allMovies;
-        }
-        if ($upcoming->isEmpty()) {
-            $upcoming = $allMovies;
-        }
-
-        // 1. Lấy thống kê doanh thu từ đầu tháng trước đến hiện tại
         $fromLastMonth = now()->subMonth()->startOfMonth();
 
         $topRevenueStats = \App\Models\TicketDetail::selectRaw('showtimes.movie_id, SUM(ticket_details.final_price) as total_revenue, COUNT(ticket_details.id) as tickets_sold')
             ->join('showtimes', 'ticket_details.showtime_id', '=', 'showtimes.id')
+            ->join('bookings', 'ticket_details.booking_id', '=', 'bookings.id')
+            ->join('payments', 'bookings.id', '=', 'payments.booking_id')
             ->whereIn('ticket_details.status', ['BOOKED', 'USED'])
-            ->where('ticket_details.created_at', '>=', $fromLastMonth)
+            ->where('payments.status', 'PAID')
+            ->where('payments.paid_at', '>=', $fromLastMonth)
             ->groupBy('showtimes.movie_id')
             ->havingRaw('total_revenue > 0')
             ->orderByDesc('total_revenue')

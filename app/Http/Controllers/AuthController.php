@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -24,7 +26,20 @@ class AuthController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu.',
         ]);
 
+        $throttleKey = Str::transliterate(Str::lower($credentials['username']).'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return back()
+                ->withErrors([
+                    'username' => "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau {$seconds} giây.",
+                ])
+                ->onlyInput('username');
+        }
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
             if (Auth::user()->isAdmin()) {
@@ -37,6 +52,8 @@ class AuthController extends Controller
 
             return redirect()->intended(route('home'));
         }
+
+        RateLimiter::hit($throttleKey, 60);
 
         return back()
             ->withErrors([
@@ -57,7 +74,7 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'full_name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'username.required' => 'Vui lòng nhập tên đăng nhập.',
             'username.unique' => 'Tên đăng nhập này đã được sử dụng.',
@@ -65,7 +82,7 @@ class AuthController extends Controller
             'email.email' => 'Địa chỉ email không đúng định dạng.',
             'email.unique' => 'Email này đã được sử dụng.',
             'password.required' => 'Vui lòng nhập mật khẩu.',
-            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
             'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
         ]);
 

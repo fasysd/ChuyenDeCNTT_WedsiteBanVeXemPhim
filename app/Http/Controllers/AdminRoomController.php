@@ -108,7 +108,7 @@ class AdminRoomController extends Controller
             ->where('seat_row', 'A')
             ->count();
 
-        $rowCount = $room->seats()->count() / $seatPerRow;
+        $rowCount = (int) ($room->seats()->count() / max($seatPerRow, 1));
 
         $vipSeats = $room->seats()
             ->where('type', 'VIP')
@@ -160,10 +160,11 @@ class AdminRoomController extends Controller
                     ]);
 
             case RoomService::ERROR_HAS_SHOWTIMES:
+            case RoomService::ERROR_HAS_HISTORY:
                 return back()
                     ->withInput()
                     ->withErrors([
-                        'general' => 'Không thể sửa phòng đang có suất chiếu trong tương lai.'
+                        'general' => 'Không thể thay đổi sơ đồ hoặc loại ghế của phòng đã có suất chiếu hoặc vé đã đặt.'
                     ]);
         }
 
@@ -179,10 +180,9 @@ class AdminRoomController extends Controller
     {
         $result = $this->roomService->deleteRoom($id);
 
-        if ($result === RoomService::ERROR_HAS_SHOWTIMES) {
-
+        if (in_array($result, [RoomService::ERROR_HAS_SHOWTIMES, RoomService::ERROR_HAS_HISTORY], true)) {
             return back()->withErrors([
-                'general' => 'Không thể xóa phòng đang có suất chiếu trong tương lai.'
+                'general' => 'Không thể xóa phòng đã có suất chiếu hoặc lịch sử vé đặt.'
             ]);
         }
 

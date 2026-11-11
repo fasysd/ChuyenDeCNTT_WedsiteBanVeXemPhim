@@ -89,15 +89,27 @@ class Booking extends Model
     }
 
     /**
+     * Kiểm tra xem đơn có vé đã check-in (USED) hay không
+     */
+    public function hasUsedTickets(): bool
+    {
+        return $this->ticketDetails()->where('status', 'USED')->exists();
+    }
+
+    /**
      * Kiểm tra xem đơn có đủ điều kiện yêu cầu hoàn tiền không:
      * - Trạng thái Booking là PAID
-     * - Có giao dịch thanh toán thành công
+     * - Chưa có vé nào được sử dụng (USED)
      * - Chưa có yêu cầu hoàn tiền đang chờ (PENDING) hoặc đã hoàn (COMPLETED)
      * - Thời điểm hiện tại cách giờ bắt đầu chiếu >= 2 tiếng (120 phút)
      */
     public function canRequestRefund(): bool
     {
         if ($this->status !== 'PAID') {
+            return false;
+        }
+
+        if ($this->hasUsedTickets()) {
             return false;
         }
 

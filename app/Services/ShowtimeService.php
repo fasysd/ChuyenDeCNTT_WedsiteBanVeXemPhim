@@ -6,6 +6,7 @@ use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ShowtimeService
 {
@@ -29,87 +30,93 @@ class ShowtimeService
 
     public function createShowtime(array $data)
     {
-        $movie = Movie::findOrFail($data['movie_id']);
-        Room::findOrFail($data['room_id']);
+        return DB::transaction(function () use ($data) {
+            $movie = Movie::findOrFail($data['movie_id']);
+            Room::where('id', $data['room_id'])->lockForUpdate()->firstOrFail();
 
-        $startTime = Carbon::parse($data['start_time']);
-        $endTime = Carbon::parse($data['end_time']);
+            $startTime = Carbon::parse($data['start_time']);
+            $endTime = Carbon::parse($data['end_time']);
 
-        if (!$this->validateStartTime($startTime)) {
-            return self::ERROR_START_TIME;
-        }
+            if (!$this->validateStartTime($startTime)) {
+                return self::ERROR_START_TIME;
+            }
 
-        if (!$this->validateAfterReleaseDate($startTime, $movie)) {
-            return self::ERROR_BEFORE_RELEASE;
-        }
+            if (!$this->validateAfterReleaseDate($startTime, $movie)) {
+                return self::ERROR_BEFORE_RELEASE;
+            }
 
-        if (!$this->validateShowtimeDuration($startTime, $endTime, $movie->duration)) {
-            return self::ERROR_DURATION;
-        }
+            if (!$this->validateShowtimeDuration($startTime, $endTime, $movie->duration)) {
+                return self::ERROR_DURATION;
+            }
 
-        if (!$this->validateRoomSchedule($data['room_id'], $startTime, $endTime)) {
-            return self::ERROR_CONFLICT;
-        }
+            if (!$this->validateRoomSchedule($data['room_id'], $startTime, $endTime)) {
+                return self::ERROR_CONFLICT;
+            }
 
-        return Showtime::create([
-            'movie_id' => $data['movie_id'],
-            'room_id' => $data['room_id'],
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'price_standard' => $data['price_standard'],
-        ]);
+            return Showtime::create([
+                'movie_id' => $data['movie_id'],
+                'room_id' => $data['room_id'],
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'price_standard' => $data['price_standard'],
+            ]);
+        });
     }
 
     public function updateShowtime(int $id, array $data)
     {
-        $showtime = Showtime::findOrFail($id);
+        return DB::transaction(function () use ($id, $data) {
+            $showtime = Showtime::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if (!$this->validateNoTicketsExist($showtime)) {
-            return self::ERROR_HAS_TICKETS;
-        }
+            if (!$this->validateNoTicketsExist($showtime)) {
+                return self::ERROR_HAS_TICKETS;
+            }
 
-        $movie = Movie::findOrFail($data['movie_id']);
-        Room::findOrFail($data['room_id']);
+            $movie = Movie::findOrFail($data['movie_id']);
+            Room::where('id', $data['room_id'])->lockForUpdate()->firstOrFail();
 
-        $startTime = Carbon::parse($data['start_time']);
-        $endTime = Carbon::parse($data['end_time']);
+            $startTime = Carbon::parse($data['start_time']);
+            $endTime = Carbon::parse($data['end_time']);
 
-        if (!$this->validateStartTime($startTime)) {
-            return self::ERROR_START_TIME;
-        }
+            if (!$this->validateStartTime($startTime)) {
+                return self::ERROR_START_TIME;
+            }
 
-        if (!$this->validateAfterReleaseDate($startTime, $movie)) {
-            return self::ERROR_BEFORE_RELEASE;
-        }
+            if (!$this->validateAfterReleaseDate($startTime, $movie)) {
+                return self::ERROR_BEFORE_RELEASE;
+            }
 
-        if (!$this->validateShowtimeDuration($startTime, $endTime, $movie->duration)) {
-            return self::ERROR_DURATION;
-        }
+            if (!$this->validateShowtimeDuration($startTime, $endTime, $movie->duration)) {
+                return self::ERROR_DURATION;
+            }
 
-        if (!$this->validateRoomSchedule($data['room_id'], $startTime, $endTime, $id)) {
-            return self::ERROR_CONFLICT;
-        }
+            if (!$this->validateRoomSchedule($data['room_id'], $startTime, $endTime, $id)) {
+                return self::ERROR_CONFLICT;
+            }
 
-        $showtime->update([
-            'movie_id' => $data['movie_id'],
-            'room_id' => $data['room_id'],
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'price_standard' => $data['price_standard'],
-        ]);
+            $showtime->update([
+                'movie_id' => $data['movie_id'],
+                'room_id' => $data['room_id'],
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'price_standard' => $data['price_standard'],
+            ]);
 
-        return $showtime->fresh();
+            return $showtime->fresh();
+        });
     }
 
     public function deleteShowtime(int $id)
     {
-        $showtime = Showtime::findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $showtime = Showtime::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if (!$this->validateNoTicketsExist($showtime)) {
-            return self::ERROR_HAS_TICKETS;
-        }
+            if (!$this->validateNoTicketsExist($showtime)) {
+                return self::ERROR_HAS_TICKETS;
+            }
 
-        return $showtime->delete();
+            return $showtime->delete();
+        });
     }
 
     private function validateRoomSchedule(

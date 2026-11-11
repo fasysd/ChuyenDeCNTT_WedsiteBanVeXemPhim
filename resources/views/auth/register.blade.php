@@ -49,7 +49,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
-                            <input type="password" name="password" class="form-control auth-input" placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)" required>
+                            <input type="password" name="password" class="form-control auth-input" placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)" required>
                         </div>
 
                         <div class="mb-4">

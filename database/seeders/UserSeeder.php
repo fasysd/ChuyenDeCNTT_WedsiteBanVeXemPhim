@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Nguyễn Quản Trị',
             'email' => 'admin@gmail.com',
             'phone' => '0901234567',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'ADMIN',
         ]);
 
@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Trần Nhân Viên',
             'email' => 'staff1@gmail.com',
             'phone' => '0902345678',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'STAFF',
         ]);
 
@@ -35,7 +35,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Lê Soát Vé',
             'email' => 'staff2@gmail.com',
             'phone' => '0903456789',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'STAFF',
         ]);
 
@@ -45,7 +45,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Nguyễn Văn Khách',
             'email' => 'customer1@gmail.com',
             'phone' => '0904567890',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'CUSTOMER',
         ]);
 
@@ -54,7 +54,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Phạm Thị Thùy',
             'email' => 'customer2@gmail.com',
             'phone' => '0905678901',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'CUSTOMER',
         ]);
 
@@ -63,7 +63,7 @@ class UserSeeder extends Seeder
             'full_name' => 'Nguyễn Văn An',
             'email' => 'an.nguyen@gmail.com',
             'phone' => '0906789012',
-            'password' => Hash::make('123456'),
+            'password' => Hash::make('12345678'),
             'role' => 'CUSTOMER',
         ]);
     }

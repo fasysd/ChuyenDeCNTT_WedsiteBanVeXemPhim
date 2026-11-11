@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\TicketDetail;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
@@ -26,15 +29,19 @@ class StaffController extends Controller
     public function tickets(Request $request)
     {
         $query = trim($request->query('q', ''));
+        $matchedTickets = collect();
         $ticket = null;
 
-        if ($query !== '') {
-            $ticket = TicketDetail::with(['booking.user', 'showtime.movie', 'seat', 'showtime.room'])
-                ->where('id', $query)
-                ->orWhereHas('booking', function ($builder) use ($query) {
-                    $builder->where('id', $query);
+        if ($query !== '' && ctype_digit($query)) {
+            $matchedTickets = TicketDetail::with(['booking.user', 'showtime.movie', 'seat', 'showtime.room'])
+                ->where(function ($builder) use ($query) {
+                    $builder->where('id', (int) $query)
+                        ->orWhere('booking_id', (int) $query);
                 })
-                ->first();
+                ->orderBy('id')
+                ->get();
+
+            $ticket = $matchedTickets->first();
         }
 
         $tickets = TicketDetail::with(['showtime.movie', 'seat', 'booking.user', 'showtime.room'])
@@ -49,7 +56,7 @@ class StaffController extends Controller
             'CANCELLED' => 'Đã hủy',
         ];
 
-        return view('staff.tickets', compact('tickets', 'ticket', 'query', 'statuses'));
+        return view('staff.tickets', compact('tickets', 'ticket', 'matchedTickets', 'query', 'statuses'));
     }
 
     /**
@@ -59,11 +66,10 @@ class StaffController extends Controller
     {
         $ticket->load(['booking.user', 'showtime.movie', 'seat', 'showtime.room']);
 
-        // Chỉ cho phép chuyển đổi từ BOOKED sang USED hoặc CANCELLED
+        // Nhân viên chỉ được phép check-in (chuyển từ BOOKED sang USED)
         $allowedTransitions = [
             'BOOKED' => [
                 'USED' => 'Đã sử dụng',
-                'CANCELLED' => 'Đã hủy',
             ],
         ];
 
@@ -73,27 +79,62 @@ class StaffController extends Controller
     }
 
     /**
-     * Cập nhật trạng thái vé (chỉ cho phép sửa từ BOOKED sang USED hoặc CANCELLED)
+     * Cập nhật trạng thái vé (chỉ cho phép check-in từ BOOKED sang USED)
      */
     public function updateStatus(Request $request, TicketDetail $ticket)
     {
-        // Kiểm tra điều kiện chỉ cho phép sửa vé có trạng thái BOOKED
-        if ($ticket->status !== 'BOOKED') {
-            return redirect()
-                ->route('staff.tickets.show', $ticket)
-                ->with('error', 'Chỉ được phép cập nhật vé đang ở trạng thái "Đã thanh toán" (BOOKED).');
-        }
-
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['USED', 'CANCELLED'])],
+            'status' => ['required', Rule::in(['USED'])],
         ], [
-            'status.in' => 'Chỉ được phép chuyển trạng thái vé sang "Đã sử dụng" hoặc "Đã hủy".',
+            'status.in' => 'Nhân viên chỉ được phép xác nhận vé sang trạng thái "Đã sử dụng".',
         ]);
 
-        $ticket->update(['status' => $validated['status']]);
+        $lock = Cache::lock("lock:ticket:checkin:{$ticket->id}", 5);
+        if (!$lock->get()) {
+            return redirect()
+                ->route('staff.tickets.show', $ticket)
+                ->with('error', 'Vé này đang được xử lý bởi nhân viên khác. Vui lòng kiểm tra lại.');
+        }
+
+        try {
+            $result = DB::transaction(function () use ($ticket, $validated) {
+                $lockedTicket = TicketDetail::with('showtime')
+                    ->where('id', $ticket->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Kiểm tra điều kiện chỉ cho phép sửa vé có trạng thái BOOKED
+                if ($lockedTicket->status !== 'BOOKED') {
+                    return [
+                        'ok' => false,
+                        'message' => 'Chỉ được phép cập nhật vé đang ở trạng thái "Đã thanh toán" (BOOKED).',
+                    ];
+                }
+
+                // Khi check-in (USED), chặn nếu suất chiếu đã kết thúc
+                if ($lockedTicket->showtime && Carbon::parse($lockedTicket->showtime->end_time)->isPast()) {
+                    return [
+                        'ok' => false,
+                        'message' => 'Suất chiếu của vé này đã kết thúc, không thể check-in.',
+                    ];
+                }
+
+                $lockedTicket->update(['status' => $validated['status']]);
+
+                return [
+                    'ok' => true,
+                    'message' => 'Đã cập nhật trạng thái vé thành công.',
+                ];
+            });
+        } finally {
+            try {
+                $lock->release();
+            } catch (\Throwable $e) {
+            }
+        }
 
         return redirect()
             ->route('staff.tickets.show', $ticket)
-            ->with('success', 'Đã cập nhật trạng thái vé thành công.');
+            ->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 }

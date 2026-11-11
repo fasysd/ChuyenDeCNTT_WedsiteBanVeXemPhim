@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class AdminMovieController extends Controller
@@ -132,7 +134,44 @@ class AdminMovieController extends Controller
             'duration.required' => 'Vui lòng nhập thời lượng phim.',
         ]);
 
-        $movie->update($validated);
+        try {
+            DB::transaction(function () use ($movie, $validated) {
+                $lockedMovie = Movie::where('id', $movie->id)->lockForUpdate()->firstOrFail();
+
+                $newDuration = (int) $validated['duration'];
+                $oldDuration = (int) $lockedMovie->duration;
+                $newReleaseDate = !empty($validated['release_date']) ? Carbon::parse($validated['release_date'])->toDateString() : null;
+                $oldReleaseDate = $lockedMovie->release_date ? Carbon::parse($lockedMovie->release_date)->toDateString() : null;
+
+                $hasTickets = $lockedMovie->showtimes()->whereHas('ticketDetails')->exists();
+
+                if ($hasTickets && ($newDuration !== $oldDuration || $newReleaseDate !== $oldReleaseDate)) {
+                    throw new \DomainException('Không thể thay đổi thời lượng hoặc ngày phát hành vì phim đã có vé được đặt.');
+                }
+
+                // Kiểm tra khớp với các suất chiếu hiện tại nếu chỉ sửa khi chưa có vé
+                $showtimes = $lockedMovie->showtimes()->get();
+                foreach ($showtimes as $showtime) {
+                    $start = Carbon::parse($showtime->start_time);
+                    $end = Carbon::parse($showtime->end_time);
+
+                    if ($start->diffInMinutes($end) < $newDuration) {
+                        throw new \DomainException('Thời lượng phim mới lớn hơn thời lượng của một suất chiếu hiện có.');
+                    }
+
+                    if ($newReleaseDate && $start->lt(Carbon::parse($newReleaseDate)->startOfDay())) {
+                        throw new \DomainException('Ngày phát hành mới không thể sau thời điểm bắt đầu của suất chiếu hiện có.');
+                    }
+                }
+
+                $lockedMovie->update($validated);
+            });
+        } catch (\DomainException $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['general' => $e->getMessage()])
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('admin.movies.index')
@@ -141,13 +180,22 @@ class AdminMovieController extends Controller
 
     public function destroy(Movie $movie)
     {
-        if ($movie->showtimes()->exists()) {
+        $deleted = DB::transaction(function () use ($movie) {
+            $lockedMovie = Movie::where('id', $movie->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedMovie->showtimes()->exists()) {
+                return false;
+            }
+
+            $lockedMovie->delete();
+            return true;
+        });
+
+        if (!$deleted) {
             return redirect()
                 ->route('admin.movies.index')
                 ->with('error', 'Không thể xóa phim vì phim này đang có suất chiếu liên quan.');
         }
-
-        $movie->delete();
 
         return redirect()
             ->route('admin.movies.index')

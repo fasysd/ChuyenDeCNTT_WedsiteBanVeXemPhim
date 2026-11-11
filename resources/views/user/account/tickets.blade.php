@@ -184,6 +184,10 @@
                                                     <div class="small text-success text-center">
                                                         Đã được hoàn tiền thành công
                                                     </div>
+                                                @elseif($booking->hasUsedTickets())
+                                                    <div class="small text-muted text-center">
+                                                        (Vé đã được sử dụng, không thể hoàn tiền)
+                                                    </div>
                                                 @else
                                                     <div class="small text-muted text-center">
                                                         (Quá hạn hoàn tiền &lt; 2h trước giờ chiếu)

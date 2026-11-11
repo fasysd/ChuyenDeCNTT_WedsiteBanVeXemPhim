@@ -53,8 +53,19 @@
                 @method('PUT')
 
                 <div class="mb-3">
+                    <label class="form-label">Mật khẩu hiện tại</label>
+                    <input type="password" name="current_password" class="form-control @error('current_password') is-invalid @enderror" placeholder="Nhập mật khẩu hiện tại" required>
+                    @error('current_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label">Mật khẩu mới</label>
-                    <input type="password" name="password" class="form-control" placeholder="Tối thiểu 6 ký tự" required>
+                    <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" placeholder="Tối thiểu 8 ký tự" required>
+                    @error('password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="mb-3">

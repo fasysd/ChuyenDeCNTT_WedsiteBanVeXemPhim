@@ -10,6 +10,7 @@ class RoomService
 {
     public const ERROR_DUPLICATE_NAME = 'DUPLICATE_NAME';
     public const ERROR_HAS_SHOWTIMES = 'HAS_SHOWTIMES';
+    public const ERROR_HAS_HISTORY = 'HAS_HISTORY';
 
     public function getAllRooms()
     {
@@ -23,11 +24,11 @@ class RoomService
 
     public function createRoom(array $data)
     {
-        if (!$this->validateRoomName($data['name'])) {
-            return self::ERROR_DUPLICATE_NAME;
-        }
-
         return DB::transaction(function () use ($data) {
+            if (!$this->validateRoomName($data['name'])) {
+                return self::ERROR_DUPLICATE_NAME;
+            }
+
             $room = Room::create([
                 'name' => $data['name'],
                 'total_seats' => $data['row_count'] * $data['seat_per_row']
@@ -46,17 +47,28 @@ class RoomService
 
     public function updateRoom(int $id, array $data)
     {
-        $room = Room::findOrFail($id);
+        return DB::transaction(function () use ($id, $data) {
+            $room = Room::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if (!$this->validateRoomName($data['name'], $id)) {
-            return self::ERROR_DUPLICATE_NAME;
-        }
+            if (!$this->validateRoomName($data['name'], $id)) {
+                return self::ERROR_DUPLICATE_NAME;
+            }
 
-        if (!$this->validateRoomCanModify($room)) {
-            return self::ERROR_HAS_SHOWTIMES;
-        }
+            $hasHistory = $this->hasRoomHistory($room);
 
-        return DB::transaction(function () use ($room, $data) {
+            if ($hasHistory) {
+                if ($this->isSeatLayoutChanged($room, $data)) {
+                    return self::ERROR_HAS_HISTORY;
+                }
+
+                // Phòng đã có lịch sử suất chiếu/vé -> chỉ cho phép đổi tên phòng, giữ nguyên ghế
+                $room->update([
+                    'name' => $data['name'],
+                ]);
+
+                return $room->fresh();
+            }
+
             $room->update([
                 'name' => $data['name'],
                 'total_seats' => $data['row_count'] * $data['seat_per_row']
@@ -77,13 +89,13 @@ class RoomService
 
     public function deleteRoom(int $id)
     {
-        $room = Room::findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $room = Room::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if (!$this->validateRoomCanDelete($room)) {
-            return self::ERROR_HAS_SHOWTIMES;
-        }
+            if ($this->hasRoomHistory($room)) {
+                return self::ERROR_HAS_HISTORY;
+            }
 
-        return DB::transaction(function () use ($room) {
             Seat::where('room_id', $room->id)->delete();
             $room->delete();
             return true;
@@ -137,22 +149,39 @@ class RoomService
     }
 
     /**
-     * Không cho sửa phòng nếu còn suất chiếu trong tương lai
+     * Kiểm tra phòng đã từng có suất chiếu hoặc vé được tạo chưa
      */
-    private function validateRoomCanModify(Room $room): bool
+    private function hasRoomHistory(Room $room): bool
     {
-        return !$room->showtimes()
-            ->where('start_time', '>', now())
-            ->exists();
+        return $room->showtimes()->exists()
+            || $room->seats()->whereHas('ticketDetails')->exists();
     }
 
     /**
-     * Không cho xóa phòng nếu còn suất chiếu trong tương lai
+     * Kiểm tra xem sơ đồ ghế (số hàng, số ghế mỗi hàng, danh sách ghế VIP) có bị thay đổi không
      */
-    private function validateRoomCanDelete(Room $room): bool
+    private function isSeatLayoutChanged(Room $room, array $data): bool
     {
-        return !$room->showtimes()
-            ->where('start_time', '>', now())
-            ->exists();
+        $currentSeats = $room->seats()->orderBy('seat_row')->orderBy('seat_number')->get();
+        $currentSeatPerRow = $currentSeats->where('seat_row', 'A')->count();
+        $currentRowCount = $currentSeatPerRow > 0 ? (int) ($currentSeats->count() / $currentSeatPerRow) : 0;
+
+        $currentVipSeats = $currentSeats->where('type', 'VIP')
+            ->map(fn ($seat) => $seat->seat_row . $seat->seat_number)
+            ->sort()
+            ->values()
+            ->all();
+
+        $newVipSeats = collect($data['vip_seats'] ?? [])
+            ->map(fn ($code) => strtoupper(trim((string) $code)))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return ((int) $data['row_count'] !== $currentRowCount)
+            || ((int) $data['seat_per_row'] !== $currentSeatPerRow)
+            || ($newVipSeats !== $currentVipSeats);
     }
 }

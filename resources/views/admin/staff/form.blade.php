@@ -44,7 +44,7 @@
             @if(!$isEdit)
                 <div class="col-md-6">
                     <label class="form-label">Mật khẩu ban đầu <span class="text-danger">*</span></label>
-                    <input type="password" name="password" class="form-control" required>
+                    <input type="password" name="password" class="form-control" placeholder="Tối thiểu 8 ký tự" required>
                 </div>
 
                 <div class="col-md-6">
@@ -73,7 +73,7 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Mật khẩu mới</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <input type="password" name="password" class="form-control" placeholder="Tối thiểu 8 ký tự" required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Xác nhận mật khẩu mới</label>

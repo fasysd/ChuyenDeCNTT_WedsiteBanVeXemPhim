@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\Refund;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AdminRefundController extends Controller
@@ -44,26 +46,47 @@ class AdminRefundController extends Controller
      */
     public function approve(Refund $refund)
     {
-        if ($refund->status !== 'PENDING') {
-            return back()->with('error', 'Yêu cầu hoàn tiền này đã được xử lý trước đó.');
+        $lock = Cache::lock("lock:refund:{$refund->id}", 10);
+        if (!$lock->get()) {
+            return back()->with('error', 'Yêu cầu hoàn tiền này đang được xử lý bởi quản trị viên khác.');
         }
 
-        DB::transaction(function () use ($refund) {
-            // 1. Cập nhật trạng thái Refund thành COMPLETED
-            $refund->update([
-                'status' => 'COMPLETED',
-                'refunded_at' => now(),
-            ]);
+        try {
+            $processed = DB::transaction(function () use ($refund) {
+                $lockedRefund = Refund::where('id', $refund->id)->lockForUpdate()->firstOrFail();
 
-            // 2. Cập nhật trạng thái Booking thành REFUNDED
-            $booking = $refund->payment->booking;
-            if ($booking) {
-                $booking->update(['status' => 'REFUNDED']);
+                if ($lockedRefund->status !== 'PENDING') {
+                    return false;
+                }
 
-                // 3. Cập nhật trạng thái các vé thuộc booking thành CANCELLED để giải phóng ghế
-                $booking->ticketDetails()->update(['status' => 'CANCELLED']);
+                // 1. Cập nhật trạng thái Refund thành COMPLETED
+                $lockedRefund->update([
+                    'status' => 'COMPLETED',
+                    'refunded_at' => now(),
+                ]);
+
+                // 2. Khóa và cập nhật trạng thái Booking thành REFUNDED
+                $bookingId = $lockedRefund->payment?->booking_id;
+                $booking = $bookingId ? Booking::where('id', $bookingId)->lockForUpdate()->first() : null;
+                if ($booking) {
+                    $booking->update(['status' => 'REFUNDED']);
+
+                    // 3. Cập nhật trạng thái các vé thuộc booking thành CANCELLED để giải phóng ghế
+                    $booking->ticketDetails()->update(['status' => 'CANCELLED']);
+                }
+
+                return true;
+            });
+        } finally {
+            try {
+                $lock->release();
+            } catch (\Throwable $e) {
             }
-        });
+        }
+
+        if (!$processed) {
+            return back()->with('error', 'Yêu cầu hoàn tiền này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Xác nhận hoàn tiền thành công! Ghế của đơn hàng đã được giải phóng.');
     }
@@ -73,14 +96,36 @@ class AdminRefundController extends Controller
      */
     public function reject(Refund $refund)
     {
-        if ($refund->status !== 'PENDING') {
-            return back()->with('error', 'Yêu cầu hoàn tiền này đã được xử lý trước đó.');
+        $lock = Cache::lock("lock:refund:{$refund->id}", 10);
+        if (!$lock->get()) {
+            return back()->with('error', 'Yêu cầu hoàn tiền này đang được xử lý bởi quản trị viên khác.');
         }
 
-        // Cập nhật trạng thái Refund thành FAILED, Booking vẫn giữ trạng thái PAID
-        $refund->update([
-            'status' => 'FAILED',
-        ]);
+        try {
+            $processed = DB::transaction(function () use ($refund) {
+                $lockedRefund = Refund::where('id', $refund->id)->lockForUpdate()->firstOrFail();
+
+                if ($lockedRefund->status !== 'PENDING') {
+                    return false;
+                }
+
+                // Cập nhật trạng thái Refund thành FAILED, Booking vẫn giữ trạng thái PAID
+                $lockedRefund->update([
+                    'status' => 'FAILED',
+                ]);
+
+                return true;
+            });
+        } finally {
+            try {
+                $lock->release();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (!$processed) {
+            return back()->with('error', 'Yêu cầu hoàn tiền này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Đã từ chối yêu cầu hoàn tiền. Đơn đặt vé của khách hàng vẫn giữ nguyên hiệu lực.');
     }

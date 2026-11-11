@@ -35,8 +35,18 @@ class AdminRevenueController extends Controller
         $endDate = null;
 
         if ($fromDate && $toDate) {
-            $startDate = Carbon::parse($fromDate)->startOfDay();
-            $endDate = Carbon::parse($toDate)->endOfDay();
+            try {
+                $startDate = Carbon::parse($fromDate)->startOfDay();
+                $endDate = Carbon::parse($toDate)->endOfDay();
+                if ($startDate->gt($endDate)) {
+                    [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
+                }
+            } catch (\Throwable $e) {
+                $startDate = null;
+                $endDate = null;
+                $fromDate = null;
+                $toDate = null;
+            }
         } else {
             switch ($period) {
                 case 'today':
@@ -97,10 +107,13 @@ class AdminRevenueController extends Controller
         // 4. Tổng số đơn hàng thanh toán thành công
         $totalPaidBookings = (clone $paymentQuery)->count();
 
-        // 5. Tổng số vé đã bán thành công
+        // 5. Tổng số vé đã bán thành công (tính theo thời điểm thanh toán paid_at)
         $ticketQuery = TicketDetail::whereIn('status', ['BOOKED', 'USED']);
         if ($startDate && $endDate) {
-            $ticketQuery->whereBetween('created_at', [$startDate, $endDate]);
+            $ticketQuery->whereHas('booking.payments', function ($q) use ($startDate, $endDate) {
+                $q->where('status', 'PAID')
+                    ->whereBetween('paid_at', [$startDate, $endDate]);
+            });
         }
         if ($movieId) {
             $ticketQuery->whereHas('showtime', function ($q) use ($movieId) {
@@ -109,35 +122,57 @@ class AdminRevenueController extends Controller
         }
         $totalTicketsSold = $ticketQuery->count();
 
-        // Thống kê doanh thu theo từng phim (Top phim có doanh thu cao nhất)
+        // Thống kê doanh thu theo từng phim trong khoảng thời gian đã chọn
         $movies = Movie::all();
+        $moviesById = $movies->keyBy('id');
+
+        $movieStatsQuery = TicketDetail::query()
+            ->join('showtimes', 'ticket_details.showtime_id', '=', 'showtimes.id')
+            ->join('bookings', 'ticket_details.booking_id', '=', 'bookings.id')
+            ->whereIn('ticket_details.status', ['BOOKED', 'USED'])
+            ->where('bookings.status', 'PAID');
+
+        if ($startDate && $endDate) {
+            $movieStatsQuery->whereExists(function ($sub) use ($startDate, $endDate) {
+                $sub->select(DB::raw(1))
+                    ->from('payments')
+                    ->whereColumn('payments.booking_id', 'bookings.id')
+                    ->where('payments.status', 'PAID')
+                    ->whereBetween('payments.paid_at', [$startDate, $endDate]);
+            });
+        }
+
+        if ($movieId) {
+            $movieStatsQuery->where('showtimes.movie_id', $movieId);
+        }
+
+        $rawMovieStats = $movieStatsQuery
+            ->selectRaw('showtimes.movie_id, SUM(ticket_details.final_price) as revenue, COUNT(ticket_details.id) as tickets')
+            ->groupBy('showtimes.movie_id')
+            ->orderByDesc('revenue')
+            ->get();
+
         $movieRevenueStats = [];
-        foreach ($movies as $movie) {
-            $movieRev = TicketDetail::whereHas('showtime', function ($q) use ($movie) {
-                $q->where('movie_id', $movie->id);
-            })->whereIn('status', ['BOOKED', 'USED'])->sum('final_price');
-
-            $ticketsCount = TicketDetail::whereHas('showtime', function ($q) use ($movie) {
-                $q->where('movie_id', $movie->id);
-            })->whereIn('status', ['BOOKED', 'USED'])->count();
-
-            if ($movieRev > 0 || $ticketsCount > 0) {
+        foreach ($rawMovieStats as $row) {
+            $movie = $moviesById->get($row->movie_id);
+            if ($movie && ($row->revenue > 0 || $row->tickets > 0)) {
                 $movieRevenueStats[] = [
                     'movie' => $movie,
-                    'revenue' => $movieRev,
-                    'tickets' => $ticketsCount,
+                    'revenue' => (float) $row->revenue,
+                    'tickets' => (int) $row->tickets,
                 ];
             }
         }
-        usort($movieRevenueStats, fn($a, $b) => $b['revenue'] <=> $a['revenue']);
 
-        // Dữ liệu cho biểu đồ (Chart Data theo ngày)
+        // Dữ liệu cho biểu đồ (30 ngày gần nhất theo paid_at)
         $chartData = (clone $paymentQuery)
             ->selectRaw('DATE(paid_at) as date, SUM(amount) as daily_revenue')
             ->groupBy('date')
-            ->orderBy('date')
+            ->orderByDesc('date')
             ->limit(30)
-            ->get();
+            ->get()
+            ->reverse()
+            ->values();
 
         $chartLabels = $chartData->pluck('date')->map(fn($d) => Carbon::parse($d)->format('d/m'))->toArray();
         $chartValues = $chartData->pluck('daily_revenue')->toArray();
