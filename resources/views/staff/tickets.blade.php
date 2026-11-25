@@ -13,19 +13,34 @@
 <div class="card p-4 mb-4 border-secondary">
     <form method="GET" action="{{ route('staff.tickets') }}">
         <div class="row g-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label text-light small mb-1">Từ khóa</label>
-                <input type="text" name="q" class="form-control" placeholder="Mã vé, mã đơn, tên hoặc SĐT khách..." value="{{ $query }}">
+                <input type="text" name="q" class="form-control" placeholder="Mã vé, mã đơn, tên hoặc SĐT..." value="{{ $query }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label text-light small mb-1">Phim</label>
-                <select name="movie_id" class="form-select">
+                <select name="movie_id" id="filterMovie" class="form-select">
                     <option value="">-- Tất cả phim --</option>
                     @foreach($movies as $movie)
                         <option value="{{ $movie->id }}" {{ (string) $movieIdFilter === (string) $movie->id ? 'selected' : '' }}>
                             {{ $movie->title }}
                         </option>
                     @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-light small mb-1">Suất chiếu</label>
+                <select name="showtime_id" id="filterShowtime" class="form-select" {{ $movieIdFilter === '' ? 'disabled' : '' }}>
+                    @if($movieIdFilter === '')
+                        <option value="">-- Chọn phim trước --</option>
+                    @else
+                        <option value="">-- Tất cả suất --</option>
+                        @foreach($showtimes as $st)
+                            <option value="{{ $st->id }}" {{ (string) $showtimeIdFilter === (string) $st->id ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($st->start_time)->format('H:i d/m/Y') }} - {{ $st->room?->name ?? 'N/A' }}
+                            </option>
+                        @endforeach
+                    @endif
                 </select>
             </div>
             <div class="col-md-2">
@@ -39,9 +54,9 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label text-light small mb-1">Ngày chiếu</label>
-                <input type="date" name="show_date" class="form-control" value="{{ $showDateFilter }}">
+                <input type="date" name="show_date" id="filterShowDate" class="form-control" value="{{ $showDateFilter }}">
             </div>
         </div>
         <div class="d-flex gap-2 mt-3">
@@ -52,6 +67,54 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const movieSelect = document.getElementById('filterMovie');
+    const showtimeSelect = document.getElementById('filterShowtime');
+    const showDateInput = document.getElementById('filterShowDate');
+    const showtimesUrl = "{{ route('staff.showtimes') }}";
+
+    async function loadShowtimes() {
+        const movieId = movieSelect.value;
+        const showDate = showDateInput.value;
+
+        if (!movieId) {
+            showtimeSelect.innerHTML = '<option value="">-- Chọn phim trước --</option>';
+            showtimeSelect.disabled = true;
+            return;
+        }
+
+        showtimeSelect.disabled = true;
+        showtimeSelect.innerHTML = '<option value="">Đang tải...</option>';
+
+        try {
+            const params = new URLSearchParams({ movie_id: movieId });
+            if (showDate) {
+                params.append('show_date', showDate);
+            }
+            const res = await fetch(`${showtimesUrl}?${params.toString()}`);
+            const items = await res.json();
+
+            let options = '<option value="">-- Tất cả suất --</option>';
+            items.forEach(item => {
+                options += `<option value="${item.id}">${item.label}</option>`;
+            });
+            showtimeSelect.innerHTML = options;
+            showtimeSelect.disabled = false;
+        } catch (e) {
+            showtimeSelect.innerHTML = '<option value="">-- Lỗi tải suất chiếu --</option>';
+        }
+    }
+
+    movieSelect.addEventListener('change', loadShowtimes);
+    showDateInput.addEventListener('change', function () {
+        if (movieSelect.value) {
+            loadShowtimes();
+        }
+    });
+});
+</script>
 
 @if($query !== '')
     <h4 class="text-light mb-3">Kết quả tìm kiếm cho: "{{ $query }}" ({{ $matchedTickets->count() }} vé)</h4>

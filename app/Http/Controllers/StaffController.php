@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
+use App\Models\Showtime;
 use App\Models\TicketDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -34,31 +35,40 @@ class StaffController extends Controller
             return redirect()->route('staff.tickets');
         }
 
-        $filterKeys = ['q', 'status', 'movie_id', 'show_date'];
+        $filterKeys = ['q', 'status', 'movie_id', 'showtime_id', 'show_date'];
         $hasFilterInput = collect($filterKeys)->contains(fn ($key) => $request->query->has($key));
+
+        $defaultFilters = [
+            'q' => '',
+            'status' => 'BOOKED',
+            'movie_id' => '',
+            'showtime_id' => '',
+            'show_date' => now()->toDateString(),
+        ];
 
         if ($hasFilterInput) {
             $filters = [
                 'q' => trim((string) $request->query('q', '')),
                 'status' => trim((string) $request->query('status', '')),
                 'movie_id' => trim((string) $request->query('movie_id', '')),
+                'showtime_id' => trim((string) $request->query('showtime_id', '')),
                 'show_date' => trim((string) $request->query('show_date', '')),
             ];
             $request->session()->put('staff_tickets_filters', $filters);
         } else {
-            $filters = $request->session()->get('staff_tickets_filters', [
-                'q' => '',
-                'status' => '',
-                'movie_id' => '',
-                'show_date' => '',
-            ]);
+            $filters = $request->session()->get('staff_tickets_filters', $defaultFilters);
         }
 
         $query = $filters['q'] ?? '';
-        $statusFilter = $filters['status'] ?? '';
+        $statusFilter = $filters['status'] ?? 'BOOKED';
         $movieIdFilter = $filters['movie_id'] ?? '';
-        $showDateFilter = $filters['show_date'] ?? '';
-        $hasActiveFilters = $query !== '' || $statusFilter !== '' || $movieIdFilter !== '' || $showDateFilter !== '';
+        $showtimeIdFilter = $filters['showtime_id'] ?? '';
+        $showDateFilter = $filters['show_date'] ?? now()->toDateString();
+        $hasActiveFilters = $query !== ''
+            || $statusFilter !== $defaultFilters['status']
+            || $movieIdFilter !== ''
+            || $showtimeIdFilter !== ''
+            || $showDateFilter !== $defaultFilters['show_date'];
 
         $matchedTickets = collect();
         $ticket = null;
@@ -101,6 +111,10 @@ class StaffController extends Controller
             });
         }
 
+        if ($showtimeIdFilter !== '' && ctype_digit($showtimeIdFilter)) {
+            $ticketsQuery->where('showtime_id', (int) $showtimeIdFilter);
+        }
+
         if ($showDateFilter !== '') {
             $ticketsQuery->whereHas('showtime', function ($showtimeQuery) use ($showDateFilter) {
                 $showtimeQuery->whereDate('start_time', $showDateFilter);
@@ -109,6 +123,19 @@ class StaffController extends Controller
 
         $tickets = $ticketsQuery->latest('id')->limit(30)->get();
         $movies = Movie::orderBy('title')->get(['id', 'title']);
+
+        $showtimes = collect();
+        if ($movieIdFilter !== '' && ctype_digit($movieIdFilter)) {
+            $showtimesQuery = Showtime::with('room:id,name')
+                ->where('movie_id', (int) $movieIdFilter)
+                ->orderBy('start_time');
+
+            if ($showDateFilter !== '') {
+                $showtimesQuery->whereDate('start_time', $showDateFilter);
+            }
+
+            $showtimes = $showtimesQuery->get(['id', 'movie_id', 'room_id', 'start_time']);
+        }
 
         $statuses = [
             'HOLDING' => 'Đang giữ chỗ',
@@ -124,11 +151,42 @@ class StaffController extends Controller
             'query',
             'statusFilter',
             'movieIdFilter',
+            'showtimeIdFilter',
             'showDateFilter',
             'hasActiveFilters',
             'movies',
+            'showtimes',
             'statuses'
         ));
+    }
+
+    /**
+     * Lấy danh sách suất chiếu theo phim (và ngày chiếu nếu có) cho bộ lọc
+     */
+    public function showtimes(Request $request)
+    {
+        $movieId = $request->query('movie_id');
+        if (!$movieId || !ctype_digit((string) $movieId)) {
+            return response()->json([]);
+        }
+
+        $query = Showtime::with('room:id,name')
+            ->where('movie_id', (int) $movieId)
+            ->orderBy('start_time');
+
+        $showDate = trim((string) $request->query('show_date', ''));
+        if ($showDate !== '') {
+            $query->whereDate('start_time', $showDate);
+        }
+
+        $items = $query->get(['id', 'room_id', 'start_time'])->map(function ($st) {
+            return [
+                'id' => $st->id,
+                'label' => Carbon::parse($st->start_time)->format('H:i d/m/Y') . ' - ' . ($st->room?->name ?? 'N/A'),
+            ];
+        });
+
+        return response()->json($items);
     }
 
     /**

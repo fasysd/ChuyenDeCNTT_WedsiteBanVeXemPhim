@@ -87,6 +87,7 @@ Route::middleware(['auth', 'staff'])
     ->group(function () {
         Route::get('/bookings', [StaffController::class, 'bookings'])->name('bookings');
         Route::get('/tickets', [StaffController::class, 'tickets'])->name('tickets');
+        Route::get('/showtimes', [StaffController::class, 'showtimes'])->name('showtimes');
         Route::get('/tickets/{ticket}', [StaffController::class, 'show'])->name('tickets.show');
         Route::post('/tickets/{ticket}/status', [StaffController::class, 'updateStatus'])->name('tickets.updateStatus');
     });
