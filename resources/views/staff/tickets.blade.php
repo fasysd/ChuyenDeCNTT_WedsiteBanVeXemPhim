@@ -12,11 +12,42 @@
 
 <div class="card p-4 mb-4 border-secondary">
     <form method="GET" action="{{ route('staff.tickets') }}">
-        <div class="input-group">
-            <input type="text" name="q" class="form-control" placeholder="Nhập mã vé (ví dụ: 1) hoặc mã đơn đặt..." value="{{ $query }}">
-            <button class="btn btn-info px-4" type="submit">Tìm kiếm</button>
-            @if($query !== '')
-                <a href="{{ route('staff.tickets') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label text-light small mb-1">Từ khóa</label>
+                <input type="text" name="q" class="form-control" placeholder="Mã vé, mã đơn, tên hoặc SĐT khách..." value="{{ $query }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-light small mb-1">Phim</label>
+                <select name="movie_id" class="form-select">
+                    <option value="">-- Tất cả phim --</option>
+                    @foreach($movies as $movie)
+                        <option value="{{ $movie->id }}" {{ (string) $movieIdFilter === (string) $movie->id ? 'selected' : '' }}>
+                            {{ $movie->title }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-light small mb-1">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    @foreach($statuses as $key => $label)
+                        <option value="{{ $key }}" {{ $statusFilter === $key ? 'selected' : '' }}>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-light small mb-1">Ngày chiếu</label>
+                <input type="date" name="show_date" class="form-control" value="{{ $showDateFilter }}">
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-info px-4" type="submit">Tìm kiếm / Lọc</button>
+            @if($hasActiveFilters)
+                <a href="{{ route('staff.tickets', ['reset' => 1]) }}" class="btn btn-outline-secondary">Xóa bộ lọc</a>
             @endif
         </div>
     </form>

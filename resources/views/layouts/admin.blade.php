@@ -97,10 +97,6 @@
 
                     <hr class="border-secondary my-3">
 
-                    <a class="nav-link" href="{{ route('movies') }}" target="_blank">
-                        Xem trang người dùng
-                    </a>
-
                     <form method="POST" action="{{ route('logout') }}" class="mt-2">
                         @csrf
                         <button type="submit" class="btn btn-outline-danger btn-sm w-100 text-start">

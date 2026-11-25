@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Movie;
 use App\Models\TicketDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,7 +29,37 @@ class StaffController extends Controller
      */
     public function tickets(Request $request)
     {
-        $query = trim($request->query('q', ''));
+        if ($request->boolean('reset')) {
+            $request->session()->forget('staff_tickets_filters');
+            return redirect()->route('staff.tickets');
+        }
+
+        $filterKeys = ['q', 'status', 'movie_id', 'show_date'];
+        $hasFilterInput = collect($filterKeys)->contains(fn ($key) => $request->query->has($key));
+
+        if ($hasFilterInput) {
+            $filters = [
+                'q' => trim((string) $request->query('q', '')),
+                'status' => trim((string) $request->query('status', '')),
+                'movie_id' => trim((string) $request->query('movie_id', '')),
+                'show_date' => trim((string) $request->query('show_date', '')),
+            ];
+            $request->session()->put('staff_tickets_filters', $filters);
+        } else {
+            $filters = $request->session()->get('staff_tickets_filters', [
+                'q' => '',
+                'status' => '',
+                'movie_id' => '',
+                'show_date' => '',
+            ]);
+        }
+
+        $query = $filters['q'] ?? '';
+        $statusFilter = $filters['status'] ?? '';
+        $movieIdFilter = $filters['movie_id'] ?? '';
+        $showDateFilter = $filters['show_date'] ?? '';
+        $hasActiveFilters = $query !== '' || $statusFilter !== '' || $movieIdFilter !== '' || $showDateFilter !== '';
+
         $matchedTickets = collect();
         $ticket = null;
 
@@ -44,10 +75,40 @@ class StaffController extends Controller
             $ticket = $matchedTickets->first();
         }
 
-        $tickets = TicketDetail::with(['showtime.movie', 'seat', 'booking.user', 'showtime.room'])
-            ->latest('id')
-            ->limit(20)
-            ->get();
+        $ticketsQuery = TicketDetail::with(['showtime.movie', 'seat', 'booking.user', 'showtime.room']);
+
+        if ($query !== '') {
+            $ticketsQuery->where(function ($builder) use ($query) {
+                if (ctype_digit($query)) {
+                    $builder->where('id', (int) $query)
+                        ->orWhere('booking_id', (int) $query);
+                }
+                $builder->orWhereHas('booking.user', function ($userQuery) use ($query) {
+                    $userQuery->where('full_name', 'like', "%{$query}%")
+                        ->orWhere('username', 'like', "%{$query}%")
+                        ->orWhere('phone', 'like', "%{$query}%");
+                });
+            });
+        }
+
+        if ($statusFilter !== '') {
+            $ticketsQuery->where('status', $statusFilter);
+        }
+
+        if ($movieIdFilter !== '' && ctype_digit($movieIdFilter)) {
+            $ticketsQuery->whereHas('showtime', function ($showtimeQuery) use ($movieIdFilter) {
+                $showtimeQuery->where('movie_id', (int) $movieIdFilter);
+            });
+        }
+
+        if ($showDateFilter !== '') {
+            $ticketsQuery->whereHas('showtime', function ($showtimeQuery) use ($showDateFilter) {
+                $showtimeQuery->whereDate('start_time', $showDateFilter);
+            });
+        }
+
+        $tickets = $ticketsQuery->latest('id')->limit(30)->get();
+        $movies = Movie::orderBy('title')->get(['id', 'title']);
 
         $statuses = [
             'HOLDING' => 'Đang giữ chỗ',
@@ -56,7 +117,18 @@ class StaffController extends Controller
             'CANCELLED' => 'Đã hủy',
         ];
 
-        return view('staff.tickets', compact('tickets', 'ticket', 'matchedTickets', 'query', 'statuses'));
+        return view('staff.tickets', compact(
+            'tickets',
+            'ticket',
+            'matchedTickets',
+            'query',
+            'statusFilter',
+            'movieIdFilter',
+            'showDateFilter',
+            'hasActiveFilters',
+            'movies',
+            'statuses'
+        ));
     }
 
     /**
