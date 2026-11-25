@@ -49,5 +49,6 @@ CMD sh -c ' \
     php artisan storage:link || true; \
     php artisan config:clear || true; \
     php artisan migrate --force || true; \
+    php artisan db:seed --force || true; \
     apache2-foreground \
 '
